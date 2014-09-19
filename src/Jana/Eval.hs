@@ -236,7 +236,7 @@ evalStmt (Local assign1 stmts assign2@(_, Ident _ pos, _) _) =
              checkType typ val
              bindVar id val
         assertBinding (_, id, expr) =
-          do val <- evalModularExpr expr
+          do val <- evalModularAliasExpr (Var id) expr
              val' <- getVar id
              unless (val == val') $
                pos <!!> wrongDelocalValue id (show val) (show val')
