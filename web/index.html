@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Janus Playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Write and run Janus programs in your browser">
+    <meta name="author" content="Michael Budde and Claus Skou Nielsen">
+
+    <link href="static/css/bootstrap.css" rel="stylesheet">
+    <link href="static/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="static/css/playground.css" rel="stylesheet">
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="">Janus Playground</a>
+          <ul class="nav pull-right">
+            <li><button id="run" class="btn btn-success"><i class="icon-play-circle icon-white"></i> Run</button></button></li>
+            <li><button id="share" class="btn"><i class="icon-share"></i> Share</button></button></li>
+            <li><a id="invert" href="#invert"><i class="icon-backward"></i> Invert</a></li>
+            <li><a href="#options" data-toggle="modal"><i class="icon-wrench"></i> Options</a></li>
+            <li class="dropdown">
+              <a class="dropdown-toggle" data-toggle="dropdown" href="#example">
+                Examples
+                <b class="caret"></b>
+              </a>
+              <ul class="dropdown-menu" id="examples">
+                <li><a href="#examples/fib">Fibonacci</a></li>
+                <li><a href="#examples/factor">Factorization</a></li>
+                <li><a href="#examples/sqrt">Square root</a></li>
+                <li><a href="#examples/perm-to-code">Perm-to-code</a></li>
+                <li><a href="#examples/run-length-enc">Run-length encoding</a></li>
+                <li><a href="#examples/run-length-enc-stack">Run-length encoding (stack version)</a></li>
+                <li><a href="#examples/stack-operations">Stack operations</a></li>
+              </ul>
+            </li>
+            <li><a href="#about" data-toggle="modal">About</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="editor"></div>
+    <div id="output-pane">
+      <div class="output-container">
+        <button type="button" class="close">&times;</button>
+        <div class="executing">Executing <img src="static/img/spinner_16.gif"/></div>
+        <div id="output"></div>
+      </div>
+    </div>
+
+    <div id="about" class="modal hide fade">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h3>About the Janus Playground</h3>
+      </div>
+      <div class="modal-body">
+        <p>The Playground lets you try out the Janus programming language in your browser without having to install anything. When you click "Run" the program is sent to the server where it is executed and the result is returned.</p>
+        <p>The Janus Playground has been created by Claus Skou Nielsen and Michael Budde as part of their Bachelor Thesis.</p>
+        <h3>Usage</h3>
+        <p>You can load example programs by clicking on the <b>Examples</b> dropdown in the menu and selecting an example which will then be loaded into the text area.</p>
+        <p>The code in the text area can be run by pressing the <b>Run</b> button in the menu and the output will appear in a seperate pane below the text area.</p>
+        <p>If you wish to see the inversion of the program currently written in the text area, press the <b>Invert</b> button. The inverted program will then show up in the output pane.</p>
+        <p>If the program fails, the error will be show in red in the output pane. The error will explain you what went wrong and in which line, and give you useful information about the program state, for example it prints the variable store when the error occured.</p>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn" data-dismiss="modal" aria-hidden="true">Close</a>
+      </div>
+    </div>
+
+    <div id="options" class="modal hide fade">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h3>Options</h3>
+      </div>
+      <div class="modal-body">
+        <label class="radio">
+          <input type="radio" name="options-int-size" id="option-arbitrary-ints" value="arbitrary" checked>
+          Arbitrary size integers
+        </label>
+        <label class="radio">
+          <input type="radio" name="options-int-size" id="option-32bit-ints" value="32">
+          32-bit integers with modular arithmetic
+        </label>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn" data-dismiss="modal" aria-hidden="true">Close</a>
+      </div>
+    </div>
+
+    <script src="static/js/jquery.min.js"></script>
+    <script src="static/js/bootstrap.min.js"></script>
+    <script src="static/js/ace/ace.js"></script>
+    <script src="static/js/playground.js"></script>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-41256642-1', 'diku.dk');
+      ga('send', 'pageview');
+
+    </script>
+  </body>
+</html>

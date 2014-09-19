@@ -1,0 +1,38 @@
+/*
+ * Calculating the square root of an integer.
+ * Adapted version of example from "Janus: a time-reversible language" by
+ * C. Lutz and H. Derby.
+ */
+
+// Calculates floor(sqrt(num))
+procedure root(int num, int root)
+    local int bit = 1
+    from bit = 1 loop  // find exponential ball park
+        call doublebit(bit)
+    until (bit * bit) > num
+
+    from (bit * bit) > num do
+        uncall doublebit(bit)
+        if ((root + bit) * (root + bit)) <= num then
+            root += bit
+        fi (root / bit) % 2 != 0
+    until bit = 1
+    delocal int bit = 1
+    num -= root * root
+
+procedure doublebit(int bit)
+    local int z = bit
+    bit += z
+    delocal int z = bit / 2
+
+procedure main()
+    int num
+    int root
+
+    num += 66
+    call root(num, root)
+
+    /*
+    root += 25
+    uncall root(num, root)
+    */

@@ -1,0 +1,10 @@
+procedure foo(int x[], int y[])
+    call bar(x, y)
+
+procedure bar(int a[], int b[])
+    a[1] += b[1]
+
+procedure main()
+    int x[3]
+
+    call foo(x, x)
