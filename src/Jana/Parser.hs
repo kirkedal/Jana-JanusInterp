@@ -8,7 +8,7 @@ import Control.Monad (liftM, liftM2)
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
 import Text.Parsec hiding (Empty)
-import Text.Parsec.String
+import Text.Parsec.String hiding (Parser)
 import Text.Parsec.Expr
 import Text.Parsec.Pos
 import qualified Text.Parsec.Error as ParsecError
@@ -17,6 +17,7 @@ import qualified Text.Parsec.Token as Token
 import Jana.Ast
 import Jana.Error
 
+type Parser = Parsec String Int
 
 toJanaError :: ParsecError.ParseError -> JanaError
 toJanaError err =
@@ -234,16 +235,30 @@ callStmt =
   do pos   <- getPosition
      reserved "call"
      procname <- identifier
-     args     <- parens $ sepBy identifier comma
-     return $ Call procname args pos
+     args_exp <- parens $ sepBy expression comma
+     formatArgumentList args_exp (\a -> Call procname a pos)
 
 uncallStmt :: Parser Stmt
 uncallStmt =
   do pos   <- getPosition
      reserved "uncall"
      procname <- identifier
-     args     <- parens $ sepBy identifier comma
-     return $ Uncall procname args pos
+     args_exp <- parens $ sepBy expression comma
+     formatArgumentList args_exp (\a -> Uncall procname a pos)
+
+formatArgumentList :: [Expr] -> ([Ident] -> Stmt) -> Parser Stmt
+formatArgumentList args_expr stmtFun =
+  do pos   <- getPosition
+     args_map <- mapM chkExpression args_expr
+     let (args,exprs) = unzip args_map 
+     return $ foldr (foldFun pos) (stmtFun args) exprs
+  where
+    chkExpression (LV (Var i) _) = return (i, Nothing)
+    chkExpression expr = 
+      do f <- getFreshVar
+         return (f, Just((f,expr)))
+    foldFun p  Nothing    stmt = stmt
+    foldFun p (Just(i,e)) stmt = Local (Int p, i, e) [stmt] (Int p, i, e) p
 
 swapStmt :: Parser Stmt
 swapStmt =
@@ -374,9 +389,16 @@ binOperators = [ [ notChain
         notChain        = Prefix $ chainl1 notOp $ return (.)
         notOp           = symbol "!" >> return (UnaryOp Not)
 
+getFreshVar :: Parser Ident
+getFreshVar = 
+  do i <- getState
+     putState $ i + 1
+     p <- getPosition
+     return $ Ident ("_parse_tmp_" ++ show i) p
+
 parseString :: Parser a -> String -> a
 parseString parser str =
-  case parse parser "" str of
+  case runParser parser 0 "" str of
     Left e  -> error $ show e
     Right r -> r
 
@@ -389,12 +411,12 @@ parseStmtsString = parseString (many1 statement)
 parseFile :: String -> IO (Either JanaError Program)
 parseFile file =
   do str <- readFile file
-     case parse program file str of
+     case runParser program 0 file str of
        Left e  -> return $ Left $ toJanaError e
        Right r -> return $ Right r
 
 parseProgram :: String -> String -> Either JanaError Program
 parseProgram filename text =
-  case parse program filename text of
+  case runParser program 0 filename text of
     Left e  -> Left $ toJanaError e
     Right r -> Right r
