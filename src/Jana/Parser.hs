@@ -17,7 +17,15 @@ import qualified Text.Parsec.Token as Token
 import Jana.Ast
 import Jana.Error
 
+-- The Int is indented as used for defining fresh variables.
 type Parser = Parsec String Int
+
+getFreshVar :: Parser Ident
+getFreshVar = 
+  do i <- getState
+     putState $ i + 1
+     p <- getPosition
+     return $ Ident ("_parse_tmp_" ++ show i) p
 
 toJanaError :: ParsecError.ParseError -> JanaError
 toJanaError err =
@@ -193,18 +201,30 @@ pushStmt =
   do pos   <- getPosition
      reserved "push"
      (x,y) <- parens twoArgs
-     return $ Push x y pos
+     chkExpression (\z -> Push z y pos) x
+  where
+    chkExpression stmtFun (LV (Var i) _) = return $ stmtFun i
+    chkExpression stmtFun expr = 
+      do f <- getFreshVar
+         p <- getPosition
+         return $ Local (Int p, f, expr) [stmtFun f] (Int p, f, Number 0 p) p
 
 popStmt :: Parser Stmt
 popStmt =
   do pos   <- getPosition
      reserved "pop"
      (x,y) <- parens twoArgs
-     return $ Pop x y pos
+     chkExpression (\z -> Pop z y pos) x
+  where
+    chkExpression stmtFun (LV (Var i) _) = return $ stmtFun i
+    chkExpression stmtFun expr = 
+      do f <- getFreshVar
+         p <- getPosition
+         return $ Local (Int p, f, Number 0 p) [stmtFun f] (Int p, f, expr) p
 
-twoArgs :: Parser (Ident, Ident)
+twoArgs :: Parser (Expr, Ident)
 twoArgs =
-  do x <- identifier
+  do x <- expression
      comma
      y <- identifier
      return (x,y)
@@ -388,13 +408,6 @@ binOperators = [ [ notChain
                                        return (BinOp f)) AssocLeft
         notChain        = Prefix $ chainl1 notOp $ return (.)
         notOp           = symbol "!" >> return (UnaryOp Not)
-
-getFreshVar :: Parser Ident
-getFreshVar = 
-  do i <- getState
-     putState $ i + 1
-     p <- getPosition
-     return $ Ident ("_parse_tmp_" ++ show i) p
 
 parseString :: Parser a -> String -> a
 parseString parser str =
