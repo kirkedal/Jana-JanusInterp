@@ -234,17 +234,21 @@ localStmt :: Parser Stmt
 localStmt =
   do pos   <- getPosition
      reserved "local"
-     type1  <- atype
-     ident1 <- identifier
-     reservedOp "="
-     expr1  <- expression
+     locs <- decls `sepBy1` comma
      stats  <- many1 statement
      reserved "delocal"
-     type2  <- atype
-     ident2 <- identifier
-     reservedOp "="
-     expr2  <- expression
-     return $ Local (type1, ident1, expr1) stats (type2, ident2, expr2) pos
+     delocs <- decls `sepBy1` comma
+     let alllocs = zip locs delocs
+     return $ head $ foldr (\(x,y) s -> [Local x s y pos]) stats alllocs
+  where 
+    decls = 
+      do typ    <- atype
+         ident  <- identifier
+         reservedOp "="
+         expr   <- expression
+         return (typ, ident, expr)
+
+
 
 atype :: Parser Type
 atype =   (reserved "int"   >> liftM Int getPosition)
