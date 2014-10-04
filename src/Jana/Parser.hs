@@ -133,10 +133,6 @@ mainProcedure pos =
     makeAssign id (VarDecl            expr)  = [Assign AddEq (Var id) expr pos]
     makeAssign id (ArrayDecl Nothing  exprs) = []
     makeAssign id (ArrayDecl (Just i) exprs) = map (\(e,j) -> Assign AddEq (Lookup id (Number j pos)) e pos) $ zip (cycle exprs) [0..i-1]
-    repList i     [] orgl endi = repList i orgl orgl endi
-    repList i (l:ls) orgl endi
-      | i == endi = []
-      | otherwise = (l,i):repList (i+1) ls orgl endi
 
 mainvdecl :: Parser (Vdecl, Maybe (Ident, DeclVal))
 mainvdecl =
