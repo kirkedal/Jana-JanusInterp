@@ -8,6 +8,7 @@ import Control.Monad (liftM, liftM2)
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
 import Data.Maybe (catMaybes)
+import Data.List (cycle)
 import Text.Parsec hiding (Empty)
 import Text.Parsec.String hiding (Parser)
 import Text.Parsec.Expr
@@ -131,7 +132,7 @@ mainProcedure pos =
   where
     makeAssign id (VarDecl            expr)  = [Assign AddEq (Var id) expr pos]
     makeAssign id (ArrayDecl Nothing  exprs) = []
-    makeAssign id (ArrayDecl (Just i) exprs) = map (\(e,j) -> Assign AddEq (Lookup id (Number j pos)) e pos) $ repList 0 exprs exprs i
+    makeAssign id (ArrayDecl (Just i) exprs) = map (\(e,j) -> Assign AddEq (Lookup id (Number j pos)) e pos) $ zip (cycle exprs) [0..i-1]
     repList i     [] orgl endi = repList i orgl orgl endi
     repList i (l:ls) orgl endi
       | i == endi = []
