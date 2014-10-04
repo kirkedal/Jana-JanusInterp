@@ -7,6 +7,7 @@ import Prelude hiding (GT, LT, EQ)
 import Control.Monad (liftM, liftM2)
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
+import Data.Maybe (catMaybes)
 import Text.Parsec hiding (Empty)
 import Text.Parsec.String hiding (Parser)
 import Text.Parsec.Expr
@@ -92,6 +93,7 @@ parens     = Token.parens     lexer -- parses surrounding parenthesis:
                                     -- takes care of the parenthesis and
                                     -- uses p to parse what's inside them
 brackets   = Token.brackets   lexer -- parses brackets
+braces     = Token.braces     lexer -- parses brackets
 integer    = Token.integer    lexer -- parses an integer
 semi       = Token.semi       lexer -- parses a semicolon
 comma      = Token.comma      lexer -- parses a comma
@@ -122,9 +124,31 @@ genProcedure =
 mainProcedure :: SourcePos -> Parser ProcMain
 mainProcedure pos =
   do parens whiteSpace
-     vdecls <- many vdecl
+     (vdecls, vassings) <- liftM unzip $ many mainvdecl
      stats  <- many1 statement
-     return $ ProcMain vdecls stats pos
+     let assigns = concatMap (\(id, declv) -> makeAssign id declv) $ catMaybes vassings
+     return $ ProcMain vdecls (assigns ++ stats) pos
+  where
+    makeAssign id (VarDecl            expr)  = [Assign AddEq (Var id) expr pos]
+    makeAssign id (ArrayDecl Nothing  exprs) = []
+    makeAssign id (ArrayDecl (Just i) exprs) = map (\(e,j) -> Assign AddEq (Lookup id (Number j pos)) e pos) $ repList 0 exprs exprs i
+    repList i     [] orgl endi = repList i orgl orgl endi
+    repList i (l:ls) orgl endi
+      | i == endi = []
+      | otherwise = (l,i):repList (i+1) ls orgl endi
+
+mainvdecl :: Parser (Vdecl, Maybe (Ident, DeclVal))
+mainvdecl =
+  do pos    <- getPosition
+     mytype <- atype
+     ident  <- identifier
+     case mytype of
+       (Int _) -> liftM2 (\x y -> (Array ident x pos, extendMaybe y (\v -> ArrayDecl x v) ident)) (brackets $ optionMaybe integer) (optionMaybe $ reservedOp "=" >> braces (sepBy1 expression comma))
+              <|> liftM (\x -> (Scalar mytype ident pos, extendMaybe x (\v -> VarDecl v) ident)) (optionMaybe $ reservedOp "=" >> expression)
+       _       -> return $ (Scalar mytype ident pos, Nothing)
+  where
+    extendMaybe Nothing  _ _ = Nothing
+    extendMaybe (Just a) f b = Just (b,f a)
 
 procedure :: Ident -> Parser Proc
 procedure name =
@@ -141,7 +165,6 @@ vdecl =
        (Int _) ->     liftM2 (Array ident) (brackets $ optionMaybe integer) (return pos)
                   <|> return (Scalar mytype ident pos)
        _       -> return $ Scalar mytype ident pos
-
 
 statement :: Parser Stmt
 statement =   assignStmt

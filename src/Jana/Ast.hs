@@ -21,6 +21,12 @@ data Ident =
 instance Eq Ident where
   (Ident name1 _) == (Ident name2 _) = name1 == name2
 
+-- Declaration value
+data DeclVal
+    = VarDecl   Expr
+    | ArrayDecl (Maybe Integer) [Expr]
+    deriving (Eq)
+
 -- Left-value
 data Lval
     = Var    Ident
