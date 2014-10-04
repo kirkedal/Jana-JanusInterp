@@ -1,11 +1,11 @@
 name:                jana
-version:             1.0
+version:             1.1
 synopsis:            Janus interpreter
 description:         Interpreter for the reversible language Janus.
 license:             BSD3
 license-file:        LICENSE
-author:              Michael Budde, Claus Skou Nielsen
-maintainer:          mbudde@gmail.com
+author:              Michael Budde, Claus Skou Nielsen, Michael Kirkedal Thomsen
+maintainer:          kirkedal@cs.uni-bremen.de
 -- copyright:
 category:            Language
 build-type:          Simple
