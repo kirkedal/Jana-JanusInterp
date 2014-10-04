@@ -57,7 +57,7 @@ data Stmt
     | Call     Ident [Ident] SourcePos
     | Uncall   Ident [Ident] SourcePos
     | UserError String SourcePos
-    | Swap     Ident Ident SourcePos
+    | Swap     Lval Lval SourcePos
     | Prints   Prints SourcePos
     | Skip SourcePos
     deriving (Eq)

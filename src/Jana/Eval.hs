@@ -253,11 +253,20 @@ evalStmt (Uncall funId args _) =
   do proc <- getProc funId
      evalProc (invertProc proc) args
 evalStmt (Swap id1 id2 pos) =
-  do val1 <- getVar id1
-     val2 <- getVar id2
+  do val1 <- evalLval (Just id2) id1
+     val2 <- evalLval (Just id1) id2
      if typesMatch val1 val2
-       then setVar id2 val1 >> setVar id1 val2
+       then setLval id2 val1 >> setLval id1 val2
        else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
+  where
+    setLval (Var id) val = setVar id val
+    setLval (Lookup id idxExpr) (JInt val) =
+      do idx    <- unpackInt pos =<< evalModularAliasExpr (Var id) idxExpr
+         arr    <- unpackArray pos =<< getVar id
+         setVar id $ JArray $ arrayModify arr idx val
+    setLval _ val = 
+      pos <!!> swapTypeError (showValueType val) "array"
+  
 evalStmt (UserError msg pos) =
   pos <!!> userError msg
 
@@ -321,10 +330,12 @@ checkLvalAlias Nothing _ = return ()
 checkLvalAlias (Just (Var id)) (Var id2) = findAlias id id2
 checkLvalAlias (Just (Var id)) (Lookup id2 _) = findAlias id id2
 checkLvalAlias (Just (Lookup id _)) (Var id2) = findAlias id id2
-checkLvalAlias (Just (Lookup id (Number n _))) (Lookup id2 (Number m _))
-  | n == m = findAlias id id2
-  | otherwise = return ()
-
+checkLvalAlias (Just (Lookup id exprn)) (Lookup id2 exprm) =
+  do n <- evalExpr Nothing exprn
+     m <- evalExpr Nothing exprm
+     if   n == m 
+     then findAlias id id2
+     else return ()    
 
 evalExpr :: Maybe Lval -> Expr -> Eval Value
 evalExpr _ (Number x _)       = return $ JInt x

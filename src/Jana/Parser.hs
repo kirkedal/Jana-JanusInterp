@@ -287,11 +287,11 @@ formatArgumentList args_expr stmtFun =
 swapStmt :: Parser Stmt
 swapStmt =
   do swap <- try $
-       do ident1 <- identifier
+       do ident1 <- lval
           pos    <- getPosition
           reservedOp "<=>"
           return $ flip (Swap ident1) pos
-     ident2 <- identifier
+     ident2 <- lval
      return $ swap ident2
 
 errorStmt :: Parser Stmt

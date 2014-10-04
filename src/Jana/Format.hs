@@ -130,7 +130,7 @@ formatStmt (Uncall id args _) =
   text "uncall" <+> formatIdent id <> parens (commasep $ map formatIdent args)
 
 formatStmt (Swap id1 id2 _) =
-  formatIdent id1 <+> text "<=>" <+> formatIdent id2
+  formatLval id1 <+> text "<=>" <+> formatLval id2
 
 formatStmt (UserError msg _) =
   text "error" <> parens (text (show msg))
