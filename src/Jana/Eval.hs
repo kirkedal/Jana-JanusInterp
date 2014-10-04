@@ -334,8 +334,8 @@ checkLvalAlias (Just (Lookup id exprn)) (Lookup id2 exprm) =
   do n <- evalExpr Nothing exprn
      m <- evalExpr Nothing exprm
      if   n == m 
-     then findAlias id id2
-     else return ()    
+       then findAlias id id2
+       else return ()
 
 evalExpr :: Maybe Lval -> Expr -> Eval Value
 evalExpr _ (Number x _)       = return $ JInt x
