@@ -229,19 +229,19 @@ twoArgs =
      y <- identifier
      return (x,y)
 
-
 localStmt :: Parser Stmt
 localStmt =
-  do pos   <- getPosition
+  do pos      <- getPosition
      reserved "local"
-     locs <- decls `sepBy1` comma
-     stats  <- many1 statement
+     locs     <- decl `sepBy1` comma
+     stats    <- many1 statement
      reserved "delocal"
-     delocs <- decls `sepBy1` comma
-     let alllocs = zip locs delocs
+     fstdeloc <- decl
+     delocs   <- count (length locs-1) $ comma >> decl 
+     let alllocs = zip locs $ fstdeloc:delocs
      return $ head $ foldr (\(x,y) s -> [Local x s y pos]) stats alllocs
   where 
-    decls = 
+    decl = 
       do typ    <- atype
          ident  <- identifier
          reservedOp "="
