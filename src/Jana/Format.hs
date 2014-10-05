@@ -1,7 +1,7 @@
 module Jana.Format where
 
 import Prelude hiding (GT, LT, EQ)
-import Data.List (intersperse)
+import Data.List (intersperse, intercalate)
 import Text.PrettyPrint
 import qualified Data.Map as Map
 import Jana.Ast
@@ -86,6 +86,10 @@ formatVdecl (Array id size _) =
         formatSize Nothing  = empty
 
 
+formatDeclVal (VarDecl expr)      = formatExpr expr
+formatDeclVal (ArrayDecl _ exprs) = text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
+
+
 formatStmts = vcat . map formatStmt
 
 
@@ -116,12 +120,12 @@ formatStmt (Push id1 id2 _) =
 formatStmt (Pop id1 id2 _) =
   text "pop" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
 
-formatStmt (Local (typ1, id1, e1) s (typ2, id2, e2) _) =
-  text "local" <+> localDecl typ1 id1 e1 $+$
+formatStmt (Local (typ1, d1) s (typ2, d2) _) =
+  text "local" <+> localDecl typ1 d1 $+$
   formatStmts s $+$
-  text "delocal" <+> localDecl typ2 id2 e2
-  where localDecl typ id expr =
-          formatType typ <+> formatIdent id <+> equals <+> formatExpr expr
+  text "delocal" <+> localDecl typ2 d2
+  where localDecl typ decl =
+          formatVdecl typ <+> equals <+> formatDeclVal decl
 
 formatStmt (Call id args _) =
   text "call" <+> formatIdent id <> parens (commasep $ map formatIdent args)
@@ -177,12 +181,12 @@ formatStmtAbbrv (From e1 s1 s2 e2 _) =
         loopPart | null s2   = [empty]
                  | otherwise = [text "loop", nest 4 (formatStmtsAbbrv s2)]
 
-formatStmtAbbrv (Local (typ1, id1, e1) s (typ2, id2, e2) _) =
-  text "local" <+> localDecl typ1 id1 e1 $+$
+formatStmtAbbrv (Local (typ1, d1) s (typ2, d2) _) =
+  text "local" <+> localDecl typ1 d1 $+$
   formatStmtsAbbrv s $+$
-  text "delocal" <+> localDecl typ2 id2 e2
-  where localDecl typ id expr =
-          formatType typ <+> formatIdent id <+> equals <+> formatExpr expr
+  text "delocal" <+> localDecl typ2 d2
+  where localDecl typ decl =
+          formatVdecl typ <+> equals <+> formatDeclVal decl
 
 formatStmtAbbrv s = formatStmt s
 

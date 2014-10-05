@@ -227,7 +227,7 @@ pushStmt =
     chkExpression stmtFun expr = 
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (Int p, f, expr) [stmtFun f] (Int p, f, Number 0 p) p
+         return $ Local (Scalar (Int p) f p, VarDecl expr) [stmtFun f] (Scalar (Int p) f p, VarDecl $ Number 0 p) p
 
 popStmt :: Parser Stmt
 popStmt =
@@ -240,7 +240,7 @@ popStmt =
     chkExpression stmtFun expr = 
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (Int p, f, Number 0 p) [stmtFun f] (Int p, f, expr) p
+         return $ Local (Scalar (Int p) f p, VarDecl $ Number 0 p) [stmtFun f] (Scalar (Int p) f p, VarDecl expr) p
 
 twoArgs :: Parser (Expr, Ident)
 twoArgs =
@@ -262,12 +262,13 @@ localStmt =
      return $ head $ foldr (\(x,y) s -> [Local x s y pos]) stats alllocs
   where 
     decl = 
-      do typ    <- atype
+      do pos    <- getPosition
+         typ    <- atype
          ident  <- identifier
-         reservedOp "="
-         expr   <- expression
-         return (typ, ident, expr)
-
+         case typ of
+           (Int _) -> liftM2 (\x y -> (Array ident x pos, ArrayDecl x y)) (brackets $ optionMaybe integer) (reservedOp "=" >> braces (sepBy1 expression comma))
+                  <|> liftM (\x -> (Scalar typ ident pos, VarDecl x)) (reservedOp "=" >> expression)
+           _       -> liftM (\x -> (Scalar typ ident pos, VarDecl x)) (reservedOp "=" >> expression)
 
 
 atype :: Parser Type
@@ -302,7 +303,7 @@ formatArgumentList args_expr stmtFun =
       do f <- getFreshVar
          return (f, Just((f,expr)))
     foldFun p  Nothing    stmt = stmt
-    foldFun p (Just(i,e)) stmt = Local (Int p, i, e) [stmt] (Int p, i, e) p
+    foldFun p (Just(i,e)) stmt = Local (Scalar (Int p) i p, VarDecl e) [stmt] (Scalar (Int p) i p, VarDecl e) p
 
 swapStmt :: Parser Stmt
 swapStmt =

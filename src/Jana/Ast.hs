@@ -59,7 +59,7 @@ data Stmt
     | From     Expr [Stmt] [Stmt] Expr SourcePos
     | Push     Ident Ident SourcePos
     | Pop      Ident Ident SourcePos
-    | Local    (Type, Ident, Expr) [Stmt] (Type, Ident, Expr) SourcePos
+    | Local    (Vdecl, DeclVal) [Stmt] (Vdecl, DeclVal) SourcePos
     | Call     Ident [Ident] SourcePos
     | Uncall   Ident [Ident] SourcePos
     | UserError String SourcePos

@@ -9,7 +9,7 @@ module Jana.Eval (
 import Prelude hiding (GT, LT, EQ, userError)
 import System.Exit
 import Data.Char (toLower)
-import Data.List (genericSplitAt, genericReplicate, intercalate)
+import Data.List (genericSplitAt, genericReplicate, intercalate, genericTake)
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Error
@@ -226,26 +226,59 @@ evalStmt stmt@(Pop id1 id2 pos) =
        else case tail of
          (x:xs) -> setVar id1 (JInt x) >> setVar id2 (JStack xs)
          []     -> pos <!!> emptyStack
-evalStmt (Local assign1 stmts assign2@(_, Ident _ pos, _) _) =
+evalStmt (Local assign1 stmts assign2 _) =
   do checkIdentAndType assign1 assign2
      createBinding assign1
      evalStmts stmts
      assertBinding assign2
-  where createBinding (typ, id, expr) =
+  where createBinding (Scalar typ id pos, VarDecl expr) =
           do val <- evalModularExpr expr
              checkType typ val
              bindVar id val
-        assertBinding (_, id, expr) =
+        createBinding (Array id _ pos, ArrayDecl (Just size) exprs) =
+          do vals  <- mapM evalModularExpr exprs
+             mapM (checkType (Int pos)) vals
+             let valsI = map (\(JInt v) -> v) vals
+             bindVar id $ JArray $ genericTake size $ cycle valsI
+        assertBinding (Scalar _ id pos, VarDecl expr) =
           do val <- evalModularAliasExpr (Var id) expr
              val' <- getVar id
              unless (val == val') $
                pos <!!> wrongDelocalValue id (show val) (show val')
              unbindVar id
-        checkIdentAndType (typ1, id1, _) (typ2, id2, _) =
+        assertBinding (Array id _ pos, ArrayDecl (Just size) exprs) =
+          do vals  <- mapM evalModularExpr exprs
+             mapM (checkType (Int pos)) vals
+             let valsI = JArray $ genericTake size $ cycle $ map (\(JInt v) -> v) vals
+             vals' <- getVar id
+             unless (valsI == vals') $
+               pos <!!> wrongDelocalValue id (show valsI) (show vals')
+             unbindVar id
+        checkIdentAndType (Scalar typ1 id1 _, _) (Scalar typ2 id2 pos, _) =
           do unless (id1 == id2) $
                pos <!!> delocalNameMismatch id1 id2
              unless (typ1 == typ2) $
                pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
+        checkIdentAndType (Array id _ pos, ArrayDecl Nothing _) _ =
+          pos <!!> arraySizeMissing id
+        checkIdentAndType _ (Array id _ pos, ArrayDecl Nothing _) =
+          pos <!!> arraySizeMissing id
+        checkIdentAndType (Array id1 typ1 _, ArrayDecl (Just i1) _) (Array id2 typ2 pos, ArrayDecl (Just i2) _) =
+          do unless (i1 > 0) $
+               pos <!!> arraySize
+             unless (i2 > 0) $
+               pos <!!> arraySize
+             unless (id1 == id2) $
+               pos <!!> delocalNameMismatch id1 id2
+             unless (typ1 == typ2) $
+               pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
+
+        -- initBinding (Array id (Just size) pos) =
+        --   if size < 1
+        --     then pos <!!> arraySize
+        --     else bindVar id $ initArr size
+        -- initArr size = JArray $ genericReplicate size 0
+
 evalStmt stmt@(Call funId args _) =
   do proc <- getProc funId
      evalProc proc args
