@@ -255,7 +255,7 @@ evalStmt (Local assign1 stmts assign2 _) =
              vals  <- mapM evalModularExpr exprs
              mapM (checkTypeStrict (Int pos)) vals
              let valsI = map (\(JInt v) -> v) vals
-             bindVar id $ JArray $ genericTake sizeInt $ cycle valsI
+             bindVar id $ JArray $ genericTake sizeInt $ valsI ++ repeat 0
         assertBinding (LocalVar _ id expr pos) =
           do val <- evalModularAliasExpr (Var id) expr
              val' <- getVar id
@@ -266,7 +266,7 @@ evalStmt (Local assign1 stmts assign2 _) =
           do sizeInt <- evalSize pos size $ length exprs
              vals  <- mapM evalModularExpr exprs
              mapM (checkTypeStrict (Int pos)) vals
-             let valsI = JArray $ genericTake sizeInt $ cycle $ map (\(JInt v) -> v) vals
+             let valsI = JArray $ genericTake sizeInt $ map (\(JInt v) -> v) vals ++ repeat 0
              vals' <- getVar id
              unless (valsI == vals') $
                pos <!!> wrongDelocalValue id (show valsI) (show vals')
