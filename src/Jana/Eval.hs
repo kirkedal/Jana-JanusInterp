@@ -76,6 +76,12 @@ checkType (Stack pos) (JStack _) = return ()
 checkType (Int pos)   val = pos <!!> typeMismatch ["int"] (showValueType val)
 checkType (Stack pos) val = pos <!!> typeMismatch ["stack"] (showValueType val)
 
+checkTypeStrict :: Type -> Value -> Eval ()
+checkTypeStrict (Int pos)   (JInt _)   = return ()
+checkTypeStrict (Stack pos) (JStack _) = return ()
+checkTypeStrict (Int pos)   val = pos <!!> typeMismatch ["int"] (showValueType val)
+checkTypeStrict (Stack pos) val = pos <!!> typeMismatch ["stack"] (showValueType val)
+
 checkVdecl :: Vdecl -> Value -> Eval ()
 checkVdecl (Scalar Int {}   _ _)  (JInt _)     = return ()
 checkVdecl (Scalar Stack {} _ _)  (JStack _)   = return ()
@@ -231,47 +237,51 @@ evalStmt (Local assign1 stmts assign2 _) =
      createBinding assign1
      evalStmts stmts
      assertBinding assign2
-  where createBinding (Scalar typ id pos, VarDecl expr) =
+  where createBinding (LocalVar typ id expr pos) =
           do val <- evalModularExpr expr
              checkType typ val
              bindVar id val
-        createBinding (Array id _ pos, ArrayDecl (Just size) exprs) =
-          do vals  <- mapM evalModularExpr exprs
-             mapM (checkType (Int pos)) vals
+        createBinding (LocalArray id size exprs pos) =
+          do sizeVal <- evalModularExpr size
+             checkTypeStrict (Int pos) sizeVal
+             let (JInt sizeInt) = sizeVal
+             unless (sizeInt > 0) $
+               pos <!!> arraySize
+             vals  <- mapM evalModularExpr exprs
+             mapM (checkTypeStrict (Int pos)) vals
              let valsI = map (\(JInt v) -> v) vals
-             bindVar id $ JArray $ genericTake size $ cycle valsI
-        assertBinding (Scalar _ id pos, VarDecl expr) =
+             bindVar id $ JArray $ genericTake sizeInt $ cycle valsI
+        assertBinding (LocalVar _ id expr pos) =
           do val <- evalModularAliasExpr (Var id) expr
              val' <- getVar id
              unless (val == val') $
                pos <!!> wrongDelocalValue id (show val) (show val')
              unbindVar id
-        assertBinding (Array id _ pos, ArrayDecl (Just size) exprs) =
-          do vals  <- mapM evalModularExpr exprs
-             mapM (checkType (Int pos)) vals
-             let valsI = JArray $ genericTake size $ cycle $ map (\(JInt v) -> v) vals
+        assertBinding (LocalArray id size exprs pos) =
+          do sizeVal <- evalModularExpr size
+             checkTypeStrict (Int pos) sizeVal
+             let (JInt sizeInt) = sizeVal
+             unless (sizeInt > 0) $
+               pos <!!> arraySize
+             vals  <- mapM evalModularExpr exprs
+             mapM (checkTypeStrict (Int pos)) vals
+             let valsI = JArray $ genericTake sizeInt $ cycle $ map (\(JInt v) -> v) vals
              vals' <- getVar id
              unless (valsI == vals') $
                pos <!!> wrongDelocalValue id (show valsI) (show vals')
              unbindVar id
-        checkIdentAndType (Scalar typ1 id1 _, _) (Scalar typ2 id2 pos, _) =
+        checkIdentAndType (LocalVar typ1 id1 _ _) (LocalVar typ2 id2 _ pos) =
           do unless (id1 == id2) $
                pos <!!> delocalNameMismatch id1 id2
              unless (typ1 == typ2) $
                pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
-        checkIdentAndType (Array id _ pos, ArrayDecl Nothing _) _ =
-          pos <!!> arraySizeMissing id
-        checkIdentAndType _ (Array id _ pos, ArrayDecl Nothing _) =
-          pos <!!> arraySizeMissing id
-        checkIdentAndType (Array id1 typ1 _, ArrayDecl (Just i1) _) (Array id2 typ2 pos, ArrayDecl (Just i2) _) =
-          do unless (i1 > 0) $
-               pos <!!> arraySize
-             unless (i2 > 0) $
-               pos <!!> arraySize
-             unless (id1 == id2) $
+        checkIdentAndType (LocalArray id1 size1 _ pos) (LocalArray id2 size2 _ _) =
+          do unless (id1 == id2) $
                pos <!!> delocalNameMismatch id1 id2
-             unless (typ1 == typ2) $
-               pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
+        checkIdentAndType (LocalArray id1 _ _ pos) (LocalVar typ _ _ _) =
+               pos <!!> delocalTypeMismatch id1 "Array" (show typ)
+        checkIdentAndType (LocalVar typ _ _ _) (LocalArray id1 _ _ pos) =
+               pos <!!> delocalTypeMismatch id1 "Array" (show typ)
 
         -- initBinding (Array id (Just size) pos) =
         --   if size < 1

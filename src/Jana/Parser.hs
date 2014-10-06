@@ -227,7 +227,7 @@ pushStmt =
     chkExpression stmtFun expr = 
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (Scalar (Int p) f p, VarDecl expr) [stmtFun f] (Scalar (Int p) f p, VarDecl $ Number 0 p) p
+         return $ Local (LocalVar (Int p) f expr p) [stmtFun f] (LocalVar (Int p) f (Number 0p ) p) p
 
 popStmt :: Parser Stmt
 popStmt =
@@ -240,7 +240,7 @@ popStmt =
     chkExpression stmtFun expr = 
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (Scalar (Int p) f p, VarDecl $ Number 0 p) [stmtFun f] (Scalar (Int p) f p, VarDecl expr) p
+         return $ Local (LocalVar (Int p) f (Number 0 p) p) [stmtFun f] (LocalVar (Int p) f expr p) p
 
 twoArgs :: Parser (Expr, Ident)
 twoArgs =
@@ -266,9 +266,9 @@ localStmt =
          typ    <- atype
          ident  <- identifier
          case typ of
-           (Int _) -> liftM2 (\x y -> (Array ident x pos, ArrayDecl x y)) (brackets $ optionMaybe integer) (reservedOp "=" >> braces (sepBy1 expression comma))
-                  <|> liftM (\x -> (Scalar typ ident pos, VarDecl x)) (reservedOp "=" >> expression)
-           _       -> liftM (\x -> (Scalar typ ident pos, VarDecl x)) (reservedOp "=" >> expression)
+           (Int _) -> liftM2 (\x y -> (LocalArray ident x y pos)) (brackets $ expression) (reservedOp "=" >> braces (sepBy1 expression comma))
+                  <|> liftM (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
+           _       -> liftM (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
 
 
 atype :: Parser Type
@@ -303,7 +303,7 @@ formatArgumentList args_expr stmtFun =
       do f <- getFreshVar
          return (f, Just((f,expr)))
     foldFun p  Nothing    stmt = stmt
-    foldFun p (Just(i,e)) stmt = Local (Scalar (Int p) i p, VarDecl e) [stmt] (Scalar (Int p) i p, VarDecl e) p
+    foldFun p (Just(i,e)) stmt = Local (LocalVar (Int p) i e p) [stmt] (LocalVar (Int p) i e p) p
 
 swapStmt :: Parser Stmt
 swapStmt =
