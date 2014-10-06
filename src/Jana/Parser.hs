@@ -266,7 +266,7 @@ localStmt =
          typ    <- atype
          ident  <- identifier
          case typ of
-           (Int _) -> liftM2 (\x y -> (LocalArray ident x y pos)) (brackets $ expression) (reservedOp "=" >> braces (sepBy1 expression comma))
+           (Int _) -> liftM2 (\x y -> (LocalArray ident x y pos)) (brackets $ optionMaybe expression) (reservedOp "=" >> braces (sepBy1 expression comma))
                   <|> liftM (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
            _       -> liftM (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
 

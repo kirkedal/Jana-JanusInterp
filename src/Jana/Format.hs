@@ -92,7 +92,9 @@ formatDeclVal (ArrayDecl _ exprs) = text "{" <+> vcat (intersperse (text ",") (m
 
 
 formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent ident <+> equals <+> formatExpr expr
-formatLocalDecl (LocalArray ident expr exprs p) = formatType (Int p) <+> formatIdent ident <+> text "[" $+$ formatExpr expr <+> text "]" $+$ equals <+> 
+formatLocalDecl (LocalArray ident (Just expr) exprs p) = formatType (Int p) <+> formatIdent ident <+> text "[" $+$ formatExpr expr <+> text "]" $+$ equals <+> 
+  text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
+formatLocalDecl (LocalArray ident Nothing exprs p) = formatType (Int p) <+> formatIdent ident <+> text "[]" $+$ equals <+> 
   text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
 
 

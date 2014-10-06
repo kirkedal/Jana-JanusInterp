@@ -237,16 +237,21 @@ evalStmt (Local assign1 stmts assign2 _) =
      createBinding assign1
      evalStmts stmts
      assertBinding assign2
-  where createBinding (LocalVar typ id expr pos) =
-          do val <- evalModularExpr expr
-             checkType typ val
-             bindVar id val
-        createBinding (LocalArray id size exprs pos) =
+  where evalSize pos (Just size) _ = 
           do sizeVal <- evalModularExpr size
              checkTypeStrict (Int pos) sizeVal
              let (JInt sizeInt) = sizeVal
              unless (sizeInt > 0) $
                pos <!!> arraySize
+             return sizeInt
+        evalSize _ Nothing altSize = 
+             return $ toInteger altSize
+        createBinding (LocalVar typ id expr pos) =
+          do val <- evalModularExpr expr
+             checkType typ val
+             bindVar id val
+        createBinding (LocalArray id size exprs pos) =
+          do sizeInt <- evalSize pos size $ length exprs
              vals  <- mapM evalModularExpr exprs
              mapM (checkTypeStrict (Int pos)) vals
              let valsI = map (\(JInt v) -> v) vals
@@ -258,11 +263,7 @@ evalStmt (Local assign1 stmts assign2 _) =
                pos <!!> wrongDelocalValue id (show val) (show val')
              unbindVar id
         assertBinding (LocalArray id size exprs pos) =
-          do sizeVal <- evalModularExpr size
-             checkTypeStrict (Int pos) sizeVal
-             let (JInt sizeInt) = sizeVal
-             unless (sizeInt > 0) $
-               pos <!!> arraySize
+          do sizeInt <- evalSize pos size $ length exprs
              vals  <- mapM evalModularExpr exprs
              mapM (checkTypeStrict (Int pos)) vals
              let valsI = JArray $ genericTake sizeInt $ cycle $ map (\(JInt v) -> v) vals

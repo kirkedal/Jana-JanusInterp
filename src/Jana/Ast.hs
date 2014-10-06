@@ -71,7 +71,7 @@ data Stmt
 -- Local Declaration
 data LocalDecl
     = LocalVar Type Ident Expr SourcePos
-    | LocalArray Ident Expr [Expr] SourcePos
+    | LocalArray Ident (Maybe Expr) [Expr] SourcePos
     deriving (Eq)
 
 -- Expression
