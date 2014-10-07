@@ -48,17 +48,17 @@ instance Show Value where
   show (JStack xs) = "<" ++ intercalate ", " (map show xs) ++ "]"
 
 showValueType :: Value -> String
-showValueType (JInt _) = "int"
+showValueType (JInt _)   = "int"
 showValueType (JStack _) = "stack"
 showValueType (JArray _) = "array"
 showValueType (JBool _)  = "bool"
 
 typesMatch :: Value -> Value -> Bool
-typesMatch (JInt _) (JInt _) = True
+typesMatch (JInt _)   (JInt _)   = True
 typesMatch (JArray _) (JArray _) = True
 typesMatch (JStack _) (JStack _) = True
-typesMatch (JBool _) (JBool _)   = True
-typesMatch _ _ = False
+typesMatch (JBool _)  (JBool _)  = True
+typesMatch _          _          = False
 
 nil = JStack []
 

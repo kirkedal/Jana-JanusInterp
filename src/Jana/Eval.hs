@@ -95,7 +95,7 @@ checkVdecl vdecl val =
         vdeclPos (Array _ _ _ pos)  = pos
         vdeclType (Scalar Int{} _ _ _)   = "int"
         vdeclType (Scalar Stack{} _ _ _) = "stack"
-        vdeclType (Array{})            = "array"
+        vdeclType (Array{})              = "array"
 
 
 arrayLookup :: Array -> Integer -> SourcePos -> Eval Value
@@ -148,7 +148,7 @@ evalMain proc@(ProcMain vdecls body pos) =
     initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
     initBinding (Scalar (Stack _) id Nothing     _)   = bindVar id nil
     initBinding (Scalar typ       id (Just expr) pos) = 
-      do val <- evalModularExpr expr
+      do val <- evalModularAliasExpr (Var id) expr
          checkType typ val
          bindVar id val
     initBinding (Array id Nothing     Nothing pos) = pos <!!> arraySizeMissing id
@@ -280,7 +280,7 @@ evalStmt (Local assign1 stmts assign2 _) =
              unbindVar id
         assertBinding (LocalArray id size exprs pos) =
           do sizeInt <- evalSize pos size $ length exprs
-             vals  <- mapM evalModularExpr exprs
+             vals  <- mapM (evalModularAliasExpr (Var id)) exprs
              valsI <- mapM (checkTypeInt pos) vals
              let valsC = JArray $ genericTake sizeInt $ valsI ++ repeat 0
              vals' <- getVar id
@@ -299,12 +299,6 @@ evalStmt (Local assign1 stmts assign2 _) =
                pos <!!> delocalTypeMismatch id1 "Array" (show typ)
         checkIdentAndType (LocalVar typ _ _ _) (LocalArray id1 _ _ pos) =
                pos <!!> delocalTypeMismatch id1 "Array" (show typ)
-
-        -- initBinding (Array id (Just size) pos) =
-        --   if size < 1
-        --     then pos <!!> arraySize
-        --     else bindVar id $ initArr size
-        -- initArr size = JArray $ genericReplicate size 0
 
 evalStmt stmt@(Call funId args _) =
   do proc <- getProc funId
