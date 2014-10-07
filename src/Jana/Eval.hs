@@ -76,25 +76,25 @@ checkType (Stack pos) (JStack _) = return ()
 checkType (Int pos)   val = pos <!!> typeMismatch ["int"] (showValueType val)
 checkType (Stack pos) val = pos <!!> typeMismatch ["stack"] (showValueType val)
 
-checkTypeStrict :: Type -> Value -> Eval ()
-checkTypeStrict (Int pos)   (JInt _)   = return ()
-checkTypeStrict (Stack pos) (JStack _) = return ()
-checkTypeStrict (Int pos)   val = pos <!!> typeMismatch ["int"] (showValueType val)
-checkTypeStrict (Stack pos) val = pos <!!> typeMismatch ["stack"] (showValueType val)
+checkTypeInt :: SourcePos -> Value -> Eval Integer
+checkTypeInt pos (JInt v) = return v
+checkTypeInt pos val      = pos <!!> typeMismatch ["int"] (showValueType val)
 
 checkVdecl :: Vdecl -> Value -> Eval ()
-checkVdecl (Scalar Int {}   _ _)  (JInt _)     = return ()
-checkVdecl (Scalar Stack {} _ _)  (JStack _)   = return ()
-checkVdecl (Array _ Nothing  _)   (JArray _)   = return ()
-checkVdecl (Array _ (Just x) pos) (JArray arr) =
-  unless (x == arrLen) $ pos <!!> arraySizeMismatch x arrLen
+checkVdecl (Scalar Int {}   _ _ _)  (JInt _)     = return ()
+checkVdecl (Scalar Stack {} _ _ _)  (JStack _)   = return ()
+checkVdecl (Array _ Nothing  _ _)   (JArray _)   = return ()
+checkVdecl (Array _ (Just x) _ pos) (JArray arr) =
+  do val <- evalModularExpr x
+     valInt <- checkTypeInt pos val
+     unless (valInt == arrLen) $ pos <!!> arraySizeMismatch valInt arrLen
   where arrLen = toInteger (length arr)
 checkVdecl vdecl val =
   vdeclPos vdecl <!!> typeMismatch [vdeclType vdecl] (showValueType val)
-  where vdeclPos (Scalar _ _ pos) = pos
-        vdeclPos (Array _ _ pos)  = pos
-        vdeclType (Scalar Int{} _ _)   = "int"
-        vdeclType (Scalar Stack{} _ _) = "stack"
+  where vdeclPos (Scalar _ _ _ pos) = pos
+        vdeclPos (Array _ _ _ pos)  = pos
+        vdeclType (Scalar Int{} _ _ _)   = "int"
+        vdeclType (Scalar Stack{} _ _ _) = "stack"
         vdeclType (Array{})            = "array"
 
 
@@ -144,15 +144,33 @@ evalMain :: ProcMain -> Eval ()
 evalMain proc@(ProcMain vdecls body pos) =
   do mapM_ initBinding vdecls
      evalStmts body
-  where initBinding (Scalar (Int _) id _)   = bindVar id $ JInt 0
-        initBinding (Scalar (Stack _) id _) = bindVar id nil
-        initBinding (Array id Nothing pos)  = pos <!!> arraySizeMissing id
-        initBinding (Array id (Just size) pos) =
-          if size < 1
-            then pos <!!> arraySize
-            else bindVar id $ initArr size
-        initArr size = JArray $ genericReplicate size 0
-
+  where 
+    initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
+    initBinding (Scalar (Stack _) id Nothing     _)   = bindVar id nil
+    initBinding (Scalar typ       id (Just expr) pos) = 
+      do val <- evalModularExpr expr
+         checkType typ val
+         bindVar id val
+    initBinding (Array id Nothing     Nothing pos) = pos <!!> arraySizeMissing id
+    initBinding (Array id (Just sizeE) Nothing pos) = 
+      do size <- checkTypeInt pos =<< evalModularExpr sizeE
+         if size < 1
+           then pos <!!> arraySize
+           else bindVar id $ JArray $ genericReplicate size 0
+    initBinding (Array id size (Just exprs) pos) = 
+      do sizeInt <- evalSize pos size $ length exprs
+         vals  <- mapM evalModularExpr exprs
+         valsI <- mapM (checkTypeInt pos) vals
+         bindVar id $ JArray $ genericTake sizeInt $ valsI ++ repeat 0
+    evalSize pos (Just size) _ = 
+      do sizeVal <- evalModularExpr size
+         sizeInt <- checkTypeInt pos sizeVal
+         unless (sizeInt > 0) $
+           pos <!!> arraySize
+         return sizeInt
+    evalSize _ Nothing altSize = 
+         return $ toInteger altSize
+        
 
 evalProc :: Proc -> [Ident] -> Eval ()
 evalProc proc args = inProcedure proc $
@@ -175,8 +193,8 @@ evalProc proc args = inProcedure proc $
           liftM (zip vdecls) refs >>= mapM_ checkArg
         localStore =
           liftM (storeFromList . zip (map (ident . getVdeclIdent) vdecls)) refs
-        getVdeclIdent (Scalar _ id _) = id
-        getVdeclIdent (Array id _ _)  = id
+        getVdeclIdent (Scalar _ id _ _) = id
+        getVdeclIdent (Array id _ _ _)  = id
         updateAliases env =
           let xs = zip (map ident args) (map ident vdecls) in
             env { aliases = introAndPropAliases xs (aliases env) }
@@ -239,8 +257,7 @@ evalStmt (Local assign1 stmts assign2 _) =
      assertBinding assign2
   where evalSize pos (Just size) _ = 
           do sizeVal <- evalModularExpr size
-             checkTypeStrict (Int pos) sizeVal
-             let (JInt sizeInt) = sizeVal
+             sizeInt <- checkTypeInt pos sizeVal
              unless (sizeInt > 0) $
                pos <!!> arraySize
              return sizeInt
@@ -253,8 +270,7 @@ evalStmt (Local assign1 stmts assign2 _) =
         createBinding (LocalArray id size exprs pos) =
           do sizeInt <- evalSize pos size $ length exprs
              vals  <- mapM evalModularExpr exprs
-             mapM (checkTypeStrict (Int pos)) vals
-             let valsI = map (\(JInt v) -> v) vals
+             valsI <- mapM (checkTypeInt pos) vals
              bindVar id $ JArray $ genericTake sizeInt $ valsI ++ repeat 0
         assertBinding (LocalVar _ id expr pos) =
           do val <- evalModularAliasExpr (Var id) expr
@@ -265,11 +281,11 @@ evalStmt (Local assign1 stmts assign2 _) =
         assertBinding (LocalArray id size exprs pos) =
           do sizeInt <- evalSize pos size $ length exprs
              vals  <- mapM evalModularExpr exprs
-             mapM (checkTypeStrict (Int pos)) vals
-             let valsI = JArray $ genericTake sizeInt $ map (\(JInt v) -> v) vals ++ repeat 0
+             valsI <- mapM (checkTypeInt pos) vals
+             let valsC = JArray $ genericTake sizeInt $ valsI ++ repeat 0
              vals' <- getVar id
-             unless (valsI == vals') $
-               pos <!!> wrongDelocalValue id (show valsI) (show vals')
+             unless (valsC == vals') $
+               pos <!!> wrongDelocalValue id (show valsC) (show vals')
              unbindVar id
         checkIdentAndType (LocalVar typ1 id1 _ _) (LocalVar typ2 id2 _ pos) =
           do unless (id1 == id2) $

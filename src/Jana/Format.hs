@@ -78,17 +78,18 @@ formatExpr = f 0
         parens' bool = if bool then parens else id
 
 
-formatVdecl (Scalar typ id _) =
-  formatType typ <+> formatIdent id
+formatVdecl (Scalar typ id exp _) =
+  formatType typ <+> formatIdent id $+$ formatExp exp
+    where
+      formatExp (Just expr) = equals $+$ formatExpr expr
+      formatExp Nothing     = empty
 
-formatVdecl (Array id size _) =
-  text "int" <+> formatIdent id <> brackets (formatSize size)
-  where formatSize (Just x) = integer x
-        formatSize Nothing  = empty
-
-
-formatDeclVal (VarDecl expr)      = formatExpr expr
-formatDeclVal (ArrayDecl _ exprs) = text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
+formatVdecl (Array id size exps _) =
+  text "int" <+> formatIdent id <> brackets (formatSize size) $+$ formatExps exps
+  where formatSize (Just x)     = formatExpr x
+        formatSize Nothing      = empty
+        formatExps (Just exprs) = equals $+$ text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
+        formatExps Nothing      = empty
 
 
 formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent ident <+> equals <+> formatExpr expr

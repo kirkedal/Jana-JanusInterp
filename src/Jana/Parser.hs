@@ -4,11 +4,9 @@ module Jana.Parser (
     ) where
 
 import Prelude hiding (GT, LT, EQ)
-import Control.Monad (liftM, liftM2)
+import Control.Monad (liftM, liftM2, liftM3)
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
-import Data.Maybe (catMaybes)
-import Data.List (cycle)
 import Text.Parsec hiding (Empty)
 import Text.Parsec.String hiding (Parser)
 import Text.Parsec.Expr
@@ -125,24 +123,19 @@ genProcedure =
 mainProcedure :: SourcePos -> Parser ProcMain
 mainProcedure pos =
   do parens whiteSpace
-     (vdecls, vassings) <- liftM unzip $ many mainvdecl
+     vdecls <- many mainvdecl
      stats  <- many1 statement
-     let assigns = concatMap (\(id, declv) -> makeAssign id declv) $ catMaybes vassings
-     return $ ProcMain vdecls (assigns ++ stats) pos
-  where
-    makeAssign id (VarDecl            expr)  = [Assign AddEq (Var id) expr pos]
-    makeAssign id (ArrayDecl Nothing  exprs) = []
-    makeAssign id (ArrayDecl (Just i) exprs) = map (\(e,j) -> Assign AddEq (Lookup id (Number j pos)) e pos) $ zip (cycle exprs) [0..i-1]
+     return $ ProcMain vdecls stats pos
 
-mainvdecl :: Parser (Vdecl, Maybe (Ident, DeclVal))
+mainvdecl :: Parser Vdecl
 mainvdecl =
   do pos    <- getPosition
      mytype <- atype
      ident  <- identifier
      case mytype of
-       (Int _) -> liftM2 (\x y -> (Array ident x pos, extendMaybe y (\v -> ArrayDecl x v) ident)) (brackets $ optionMaybe integer) (optionMaybe $ reservedOp "=" >> braces (sepBy1 expression comma))
-              <|> liftM (\x -> (Scalar mytype ident pos, extendMaybe x (\v -> VarDecl v) ident)) (optionMaybe $ reservedOp "=" >> expression)
-       _       -> return $ (Scalar mytype ident pos, Nothing)
+       (Int _) -> liftM2 (\x y -> (Array ident x y pos)) (brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> braces (sepBy1 expression comma))
+              <|> liftM (\x -> (Scalar mytype ident x pos)) (optionMaybe $ reservedOp "=" >> expression)
+       _       -> return $ (Scalar mytype ident Nothing pos)
   where
     extendMaybe Nothing  _ _ = Nothing
     extendMaybe (Just a) f b = Just (b,f a)
@@ -159,9 +152,9 @@ vdecl =
      mytype <- atype
      ident  <- identifier
      case mytype of
-       (Int _) ->     liftM2 (Array ident) (brackets $ optionMaybe integer) (return pos)
-                  <|> return (Scalar mytype ident pos)
-       _       -> return $ Scalar mytype ident pos
+       (Int _) ->     liftM3 (Array ident) (brackets $ optionMaybe expression) (return Nothing) (return pos)
+                  <|> return (Scalar mytype ident Nothing pos)
+       _       -> return $ Scalar mytype ident Nothing pos
 
 statement :: Parser Stmt
 statement =   assignStmt
