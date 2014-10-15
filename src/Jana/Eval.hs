@@ -347,6 +347,8 @@ evalStmt (Prints (Show vars) pos) =
 
 evalStmt (Skip _) = return ()
 
+evalStmt (Assert e pos) = assertTrue e
+
 evalLval :: Maybe Lval -> Lval -> Eval Value
 evalLval lv (Var id) = checkLvalAlias lv (Var id) >> getVar id
 evalLval lv (Lookup id@(Ident _ pos) e) =

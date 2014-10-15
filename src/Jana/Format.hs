@@ -161,6 +161,9 @@ formatStmt (Prints (Show idents) _) =
 formatStmt (Skip _) =
   text "skip"
 
+formatStmt (Assert e _) =
+  text "assert" <> parens (formatExpr e)
+
 
 formatStmtsAbbrv []         = empty
 formatStmtsAbbrv [If {}]    = text "..."

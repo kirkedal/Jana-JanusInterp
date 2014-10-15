@@ -77,6 +77,7 @@ janaDef = Token.LanguageDef {
                                          , "print"
                                          , "printf"
                                          , "nil"
+                                         , "assert"
                                          ]
               , Token.caseSensitive    = True
   }
@@ -169,6 +170,7 @@ statement =   assignStmt
           <|> errorStmt
           <|> printsStmt
           <|> skipStmt
+          <|> assertStmt
           <?> "statement"
 
 assignStmt :: Parser Stmt
@@ -341,6 +343,9 @@ showStmt =
 
 skipStmt :: Parser Stmt
 skipStmt = reserved "skip" >> liftM Skip getPosition
+
+assertStmt :: Parser Stmt
+assertStmt = reserved "assert" >> liftM2 Assert expression getPosition
 
 expression :: Parser Expr
 expression = buildExpressionParser binOperators term
