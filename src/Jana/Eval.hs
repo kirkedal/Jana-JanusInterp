@@ -307,11 +307,13 @@ evalStmt (Uncall funId args _) =
   do proc <- getProc funId
      evalProc (invertProc proc) args
 evalStmt (Swap id1 id2 pos) =
-  do val1 <- evalLval (Just id2) id1
-     val2 <- evalLval (Just id1) id2
-     if typesMatch val1 val2
-       then setLval id2 val1 >> setLval id1 val2
-       else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
+  do alias <- id1 `isSameArrayElement` id2
+     unless alias $ do
+       val1 <- evalLval (Just id2) id1
+       val2 <- evalLval (Just id1) id2
+       if typesMatch val1 val2
+         then setLval id2 val1 >> setLval id1 val2
+         else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
   where
     setLval (Var id) val = setVar id val
     setLval (Lookup id idxExpr) (JInt val) =
@@ -320,6 +322,12 @@ evalStmt (Swap id1 id2 pos) =
          setVar id $ JArray $ arrayModify arr idx val
     setLval _ val = 
       pos <!!> swapTypeError (showValueType val) "array"
+
+    Var x1 `isSameArrayElement` Var x2 = return False
+    Lookup x1 e1 `isSameArrayElement` Lookup x2 e2 =
+        do v1 <- evalExpr Nothing e1
+           v2 <- evalExpr Nothing e2
+           return $ x1 == x2 && v1 == v2
   
 evalStmt (UserError msg pos) =
   pos <!!> userError msg
