@@ -65,7 +65,8 @@ data Stmt
     | UserError String SourcePos
     | Swap     Lval Lval SourcePos
     | Prints   Prints SourcePos
-    | Skip SourcePos
+    | Skip     SourcePos
+    | Assert   Expr SourcePos
     deriving (Eq)
 
 -- Local Declaration
