@@ -134,7 +134,7 @@ mainvdecl =
      mytype <- atype
      ident  <- identifier
      case mytype of
-       (Int _) -> liftM2 (\x y -> (Array ident x y pos)) (brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> braces (sepBy1 expression comma))
+       (Int _) -> liftM2 (\x y -> (Array ident x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
               <|> liftM (\x -> (Scalar mytype ident x pos)) (optionMaybe $ reservedOp "=" >> expression)
        _       -> return $ (Scalar mytype ident Nothing pos)
   where
@@ -153,8 +153,8 @@ vdecl =
      mytype <- atype
      ident  <- identifier
      case mytype of
-       (Int _) ->     liftM3 (Array ident) (brackets $ optionMaybe expression) (return Nothing) (return pos)
-                  <|> return (Scalar mytype ident Nothing pos)
+       (Int _) -> liftM3 (Array ident) (many1 $ brackets $ optionMaybe expression) (return Nothing) (return pos)
+              <|> return (Scalar mytype ident Nothing pos)
        _       -> return $ Scalar mytype ident Nothing pos
 
 statement :: Parser Stmt
@@ -261,10 +261,9 @@ localStmt =
          typ    <- atype
          ident  <- identifier
          case typ of
-           (Int _) -> liftM2 (\x y -> (LocalArray ident x y pos)) (brackets $ optionMaybe expression) (reservedOp "=" >> braces (sepBy1 expression comma))
-                  <|> liftM (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
-           _       -> liftM (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
-
+           (Int _) -> liftM2 (\x y -> (LocalArray ident x y pos)) (many1 $ brackets $ optionMaybe expression) (reservedOp "=" >> array)
+                  <|> liftM  (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
+           _       -> liftM  (\x -> (LocalVar typ ident x pos)) (reservedOp "=" >> expression)
 
 atype :: Parser Type
 atype =   (reserved "int"   >> liftM Int getPosition)
@@ -376,12 +375,18 @@ boolExpr =   (reserved "true"  >> return (Boolean True))
 lvalExpr :: Parser (SourcePos -> Expr)
 lvalExpr = liftM LV lval
 
+array :: Parser Expr
+array = liftM2 ArrayE (braces $ sepBy1 array comma) getPosition
+    <|> expression
+-- array = try $ liftM2 ArrayE (braces $ sepBy1 array comma) getPosition
+--     <|> liftM2 ArrayE (braces $ sepBy1 expression comma) getPosition
+
 lval ::  Parser Lval
 lval =
   do ident <- identifier
-     lookup <- optionMaybe (brackets expression)
+     lookup <- optionMaybe (many1 $ brackets expression)
      case lookup of
-       Just expr -> return $ Lookup ident expr
+       Just exprs -> return $ Lookup ident exprs
        Nothing   -> return $ Var ident
 
 nilExpr :: Parser (SourcePos -> Expr)

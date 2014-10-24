@@ -1,9 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Jana.Types (
-    Array, Stack,
+    Array, Stack, Index,
     Value(..), nil, performOperation, performModOperation,
-    showValueType, typesMatch, truthy,
+    showValueType, typesMatch, truthy, findIndex,
     Store, printVdecl, showStore, emptyStore, storeFromList,
     getRef, getVar, getRefValue, bindVar, unbindVar, setVar,
     EvalEnv(..),
@@ -14,7 +14,7 @@ module Jana.Types (
 
 import Prelude hiding (GT, LT, EQ)
 import Data.Bits
-import Data.List (intercalate)
+import Data.List (intercalate, genericSplitAt)
 import Data.IORef
 import Control.Monad.State
 import Control.Monad.Reader
@@ -32,30 +32,48 @@ import Jana.ErrorMessages
 
 type Array = [Integer]
 type Stack = [Integer]
+type Index = [Integer]
 
 -- Types of values an expression can evaluate to.
 data Value
   = JInt Integer
   | JBool Bool
-  | JArray Array
+  | JArray Index Array
   | JStack Stack
   deriving (Eq)
 
 instance Show Value where
   show (JInt x)    = show x
-  show (JArray xs) = "{" ++ intercalate ", " (map show xs) ++ "}"
+  show (JArray [_] xs) = "{" ++ intercalate ", " (map show xs) ++ "}"
+  show (JArray (i:is) xs) = "{" ++ intercalate ", " (map (\x -> show $ JArray is x) $ partitionInto i xs) ++ "}"
   show (JStack []) = "nil"
   show (JStack xs) = "<" ++ intercalate ", " (map show xs) ++ "]"
+
+partitionInto :: Integer -> [a] -> [[a]]
+partitionInto k = go
+  where
+    go t = case genericSplitAt k t of
+             (a,b) | null a    -> []
+                   | otherwise -> a : go b
+
+findIndex :: Index -> Index -> Maybe Integer
+findIndex []       []       = Just 0
+findIndex (iA:iAs) (iC:iCs) 
+  | and [iA > iC, iC >= 0]  = (\x -> return $ product (iC:iAs) + x) =<< findIndex iAs iCs
+  | otherwise               = Nothing
+findIndex _        _        = Nothing
 
 showValueType :: Value -> String
 showValueType (JInt _)   = "int"
 showValueType (JStack _) = "stack"
-showValueType (JArray _) = "array"
+showValueType (JArray i _) = "array" ++ "[" ++ intercalate ", " (map show i) ++ "]"
 showValueType (JBool _)  = "bool"
 
 typesMatch :: Value -> Value -> Bool
 typesMatch (JInt _)   (JInt _)   = True
-typesMatch (JArray _) (JArray _) = True
+typesMatch (JArray i1 _) (JArray i2 _) 
+  | i1 == i2  = True
+  | otherwise = False
 typesMatch (JStack _) (JStack _) = True
 typesMatch (JBool _)  (JBool _)  = True
 typesMatch _          _          = False
@@ -116,7 +134,7 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
 type Store = Map.Map String (IORef Value)
 
 printVdecl :: String -> Value -> String
-printVdecl name val@(JArray xs) = printf "%s[%d] = %s" name (length xs) (show val)
+printVdecl name val@(JArray _ xs) = printf "%s[%d] = %s" name (length xs) (show val)
 printVdecl name val = printf "%s = %s" name (show val)
 
 showStore :: Store -> IO String

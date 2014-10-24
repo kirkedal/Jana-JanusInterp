@@ -19,7 +19,7 @@ formatIdent id = text (ident id)
 
 formatLval :: Lval -> Doc
 formatLval (Var id) = formatIdent id
-formatLval (Lookup id expr) = formatIdent id <> brackets (formatExpr expr)
+formatLval (Lookup id expr) = formatIdent id <> brackets (vcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
 
 formatModOp AddEq = text "+="
 formatModOp SubEq = text "-="
@@ -66,6 +66,7 @@ formatExpr = f 0
         f _ (Empty id _)      = text "empty" <> parens (formatIdent id)
         f _ (Top id _)        = text "top" <> parens (formatIdent id)
         f _ (Size id _)       = text "size" <> parens (formatIdent id)
+        f _ (ArrayE es _)     = text "{" <+> vcat (intersperse (text ",") (map formatExpr es)) $+$ text "}"
         f _ (Nil _)           = text "nil"
         f d (UnaryOp op e)    =
           let opd = unaryOpPrec op in
@@ -84,20 +85,19 @@ formatVdecl (Scalar typ id exp _) =
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
 
-formatVdecl (Array id size exps _) =
-  text "int" <+> formatIdent id <> brackets (formatSize size) $+$ formatExps exps
-  where formatSize (Just x)     = formatExpr x
-        formatSize Nothing      = empty
-        formatExps (Just exprs) = equals $+$ text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
-        formatExps Nothing      = empty
+formatVdecl (Array id size a_exp _) =
+  text "int" <+> formatIdent id <> vcat (map formatSize size) $+$ formatExp a_exp
+  where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
+        formatSize Nothing  = text "[]"
+        formatExp (Just ex) = equals $+$ formatExpr ex
+        formatExp Nothing   = empty
 
 
 formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent ident <+> equals <+> formatExpr expr
-formatLocalDecl (LocalArray ident (Just expr) exprs p) = formatType (Int p) <+> formatIdent ident <+> text "[" $+$ formatExpr expr <+> text "]" $+$ equals <+> 
-  text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
-formatLocalDecl (LocalArray ident Nothing exprs p) = formatType (Int p) <+> formatIdent ident <+> text "[]" $+$ equals <+> 
-  text "{" <+> vcat (intersperse (text ",") (map formatExpr exprs)) $+$ text "}"
-
+formatLocalDecl (LocalArray ident iexprs expr p) = formatType (Int p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ equals <+> 
+  formatExpr expr
+  where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
+        formatIndex Nothing  = text "[]"
 
 formatStmts = vcat . map formatStmt
 

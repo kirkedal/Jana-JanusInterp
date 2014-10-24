@@ -24,13 +24,13 @@ instance Eq Ident where
 -- Declaration value
 data DeclVal
     = VarDecl   Expr
-    | ArrayDecl (Maybe Integer) [Expr]
+    | ArrayDecl [Maybe Integer] [Expr]
     deriving (Eq)
 
 -- Left-value
 data Lval
     = Var    Ident
-    | Lookup Ident Expr
+    | Lookup Ident [Expr]
     deriving (Eq)
 
 -- Modification operators used in assignment
@@ -72,7 +72,7 @@ data Stmt
 -- Local Declaration
 data LocalDecl
     = LocalVar Type Ident Expr SourcePos
-    | LocalArray Ident (Maybe Expr) [Expr] SourcePos
+    | LocalArray Ident [Maybe Expr] Expr SourcePos
     deriving (Eq)
 
 -- Expression
@@ -86,12 +86,13 @@ data Expr
     | Top      Ident SourcePos
     | Size     Ident SourcePos
     | Nil      SourcePos
+    | ArrayE   [Expr] SourcePos
     deriving (Eq)
 
 -- Declaration
 data Vdecl
     = Scalar Type Ident (Maybe Expr) SourcePos 
-    | Array  Ident (Maybe Expr) (Maybe [Expr]) SourcePos
+    | Array  Ident [Maybe Expr] (Maybe Expr) SourcePos
     deriving (Eq)
 
 data Prints

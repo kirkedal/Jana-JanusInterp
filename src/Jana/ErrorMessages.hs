@@ -2,6 +2,7 @@ module Jana.ErrorMessages where
 
 import Control.Monad.Error
 import Text.Printf
+import Data.List (intercalate)
 
 import Jana.Error
 import Jana.Ast
@@ -36,10 +37,12 @@ swapTypeError :: String -> String -> Message
 swapTypeError typ1 typ2 = Message $
   printf "Can't swap variables of type `%s' and `%s'" typ1 typ2
 
-outOfBounds :: (PrintfArg a) => a -> a -> Message
+outOfBounds :: (PrintfArg a) => [a] -> [a] -> Message
 outOfBounds index size = Message $
-  printf "Array index `%d' was out of bounds (array size was %d)"
-         index size
+  printf "Array index `%s' was out of bounds (array size was %s)"
+         (pa index) (pa size)
+  where 
+    pa i = "[" ++ intercalate "," (map (printf "%d") i) ++ "]"
 
 emptyStack :: Message
 emptyStack = Message "Can't pop from empty stack"
@@ -90,7 +93,7 @@ argumentError id expect actual = Message $
          (ident id) expect actual
 
 arraySize :: Message
-arraySize = Message "Array size must be greater than or equal to one"
+arraySize = Message $ "Array size must be greater than or equal to one"
 
 arraySizeMissing :: Ident -> Message
 arraySizeMissing id = Message $
