@@ -50,8 +50,9 @@ instance Show Value where
   show (JStack xs) = "<" ++ intercalate ", " (map show xs) ++ "]"
 
 partitionInto :: Integer -> [a] -> [[a]]
-partitionInto k = go
+partitionInto s n = go n
   where
+    k = (toInteger $ length n) `div` s
     go t = case genericSplitAt k t of
              (a,b) | null a    -> []
                    | otherwise -> a : go b
@@ -134,7 +135,7 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
 type Store = Map.Map String (IORef Value)
 
 printVdecl :: String -> Value -> String
-printVdecl name val@(JArray _ xs) = printf "%s[%d] = %s" name (length xs) (show val)
+printVdecl name val@(JArray i xs) = printf "%s%s = %s" name (concatMap (\x -> "["++ show x ++ "]") i) (show val)
 printVdecl name val = printf "%s = %s" name (show val)
 
 showStore :: Store -> IO String
