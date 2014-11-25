@@ -171,7 +171,8 @@ evalAliasSize pos lval (Nothing:size) (Just (a:altSize)) =
   do sizeInt <- evalAliasSize pos lval size $ Just altSize
      return $ a:sizeInt
 evalAliasSize pos lval ((Just s):size) altSize = 
-  do sizeVal <- evalExpr lval s >>= numberToModular
+  do aliasExpr lval s
+     sizeVal <- evalExpr lval s >>= numberToModular
      sizeInt <- checkTypeInt pos sizeVal
      unless (sizeInt > 0) $
        pos <!!> arraySize
@@ -464,10 +465,22 @@ evalExpr lv expr@(Empty id pos) = inArgument "empty" (ident id) $
      case stack of
        [] -> return $ JBool True
        _  -> return $ JBool False
-evalExpr lv expr@(Size id@(Ident _ pos) _) = inArgument "size" (ident id) $
-  do checkAlias lv id
-     boxedVal <- getVar id
+evalExpr _ expr@(Size id@(Ident _ pos) _) = inArgument "size" (ident id) $
+  do boxedVal <- getVar id
      case boxedVal of
        JArray (i:_) _ -> return $ JInt (toInteger i)
        JStack xs -> return $ JInt (toInteger $ length xs)
        val       -> pos <!!> typeMismatch ["array", "stack"] (showValueType val)
+
+-- |This alias check differs to the alias check in the evalExpr in that it also includes size.
+-- |This is used in delocal where the delocaliser array is not allowed.
+aliasExpr :: Maybe Lval -> Expr -> Eval ()
+aliasExpr _  (Number _ _)    = return ()
+aliasExpr _  (Boolean _ _)   = return ()
+aliasExpr _  (Nil _)         = return ()
+aliasExpr lv (LV val _)      = checkLvalAlias lv val
+aliasExpr lv (UnaryOp Not e) = aliasExpr lv e
+aliasExpr lv (BinOp _ e1 e2) = aliasExpr lv e1 >> aliasExpr lv e2
+aliasExpr lv (Top id pos)    = checkAlias lv id
+aliasExpr lv (Empty id pos)  = checkAlias lv id
+aliasExpr lv (Size id _)     = checkAlias lv id
