@@ -163,18 +163,21 @@ flattenArray _ (s:sIdx) (ArrayE a pos)
 flattenArray pos _ _             = pos <!!> arraySize
 
 evalSize :: SourcePos -> [Maybe Expr] -> Maybe Index -> Eval Index
-evalSize _ [] _ = return []
-evalSize pos (Nothing:size) (Just (a:altSize)) = 
-  do sizeInt <- evalSize pos size $ Just altSize
+evalSize pos exprs index = evalAliasSize pos Nothing exprs index
+
+evalAliasSize :: SourcePos -> Maybe Lval -> [Maybe Expr] -> Maybe Index -> Eval Index
+evalAliasSize _ _ [] _ = return []
+evalAliasSize pos lval (Nothing:size) (Just (a:altSize)) = 
+  do sizeInt <- evalAliasSize pos lval size $ Just altSize
      return $ a:sizeInt
-evalSize pos ((Just s):size) altSize = 
-  do sizeVal <- evalModularExpr s
+evalAliasSize pos lval ((Just s):size) altSize = 
+  do sizeVal <- evalExpr lval s >>= numberToModular
      sizeInt <- checkTypeInt pos sizeVal
      unless (sizeInt > 0) $
        pos <!!> arraySize
-     sizeRest <- evalSize pos size $ liftM tail altSize
+     sizeRest <- evalAliasSize pos lval size $ liftM tail altSize
      return $ sizeInt:sizeRest
-evalSize pos _ _ = pos <!!> arraySize
+evalAliasSize pos _ _ _ = pos <!!> arraySize
 
 ---- END
 
@@ -307,7 +310,7 @@ evalStmt (Local assign1 stmts assign2 _) =
                pos <!!> wrongDelocalValue id (show val) (show val')
              unbindVar id
         assertBinding (LocalArray id size expr pos) =
-          do sizeInt <- evalSize pos size $ Just $ sizeEstimate expr
+          do sizeInt <- evalAliasSize pos (Just (Var id)) size $ Just $ sizeEstimate expr
              exprs <- flattenArray pos sizeInt expr
              vals  <- mapM (evalModularAliasExpr (Var id)) exprs
              valsI <- mapM (checkTypeInt pos) vals
@@ -461,8 +464,9 @@ evalExpr lv expr@(Empty id pos) = inArgument "empty" (ident id) $
      case stack of
        [] -> return $ JBool True
        _  -> return $ JBool False
-evalExpr _ expr@(Size id@(Ident _ pos) _) = inArgument "size" (ident id) $
-  do boxedVal <- getVar id
+evalExpr lv expr@(Size id@(Ident _ pos) _) = inArgument "size" (ident id) $
+  do checkAlias lv id
+     boxedVal <- getVar id
      case boxedVal of
        JArray (i:_) _ -> return $ JInt (toInteger i)
        JStack xs -> return $ JInt (toInteger $ length xs)
