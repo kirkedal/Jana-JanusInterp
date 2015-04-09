@@ -363,7 +363,6 @@ evalStmt (Swap id1 id2 pos) =
         do v1 <- mapM (evalExpr Nothing) e1
            v2 <- mapM (evalExpr Nothing) e2
            return $ x1 == x2 && v1 == v2
-    _ `isSameArrayElement` _ = return False
   
 evalStmt (UserError msg pos)          = pos <!!> userError msg
 evalStmt (Prints (Print msg) pos)     = liftIO $ putStrLn msg
