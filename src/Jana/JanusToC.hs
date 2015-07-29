@@ -103,11 +103,13 @@ formatVdecl (Scalar typ id exp _) =
 --         formatExp Nothing   = empty
 
 -- CHECK
-formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent None ident <+> equals <+> formatExpr expr
+formatLocalDecl (LocalVar typ ident expr p)     = formatVdecl (Scalar typ ident (Just expr) p)
+  --formatType typ <+> formatIdent None ident <+> equals <+> formatExpr expr
 -- formatLocalDecl (LocalArray ident iexprs expr p) = formatType (Int p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ equals <+> 
 --   formatExpr expr
 --   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
 --         formatIndex Nothing  = text "[]"
+formatAssertLocalDecl (LocalVar typ ident expr p) = formatStmt (Assert (BinOp EQ (LV (Var ident) p) expr) p)
 
 formatStmts :: [Stmt] -> Doc
 formatStmts = vcat . map formatStmt
@@ -122,23 +124,19 @@ formatStmt (If e1 s1 s2 e2 p) =
     text "}" $+$ elsePart
   where elsePart | null s2   = empty
                  | otherwise = text "else {" $+$ nest 4 (formatStmts s2 $+$ formatStmt (Assert (UnaryOp Not e2) p)) $+$ text "}"
--- formatStmt (From e1 s1 s2 e2 _) =
---   text "from" <+> formatExpr e1 <+> keyword $+$
---     vcat inside $+$
---   text "until" <+> formatExpr e2
---   where (keyword:inside) = doPart ++ loopPart
---         doPart   | null s1   = []
---                  | otherwise = [text "do", nest 4 (formatStmts s1)]
---         loopPart | null s2   = [empty]
---                  | otherwise = [text "loop", nest 4 (formatStmts s2)]
+formatStmt (From e1 s1 s2 e2 p) =
+  formatStmts ((Assert e1 p):s1) $+$
+  text "while" <+> parens (formatExpr (UnaryOp Not e2)) <+> text "{" $+$
+    nest 4 (formatStmts $ s2 ++ [(Assert (UnaryOp Not e1) p)] ++ s1) $+$
+    text "}"
 -- formatStmt (Push id1 id2 _) =
 --   text "push" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
 -- formatStmt (Pop id1 id2 _) =
 --   text "pop" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
--- formatStmt (Local decl1 s decl2 _) =
---   text "local" <+> formatLocalDecl decl1 $+$
---   formatStmts s $+$
---   text "delocal" <+> formatLocalDecl decl2
+formatStmt (Local decl1 s decl2 _) =
+  formatLocalDecl decl1 $+$
+  formatStmts s $+$
+  formatAssertLocalDecl decl2
 formatStmt (Call id args _) =
   formatIdent Forward id <> parens (commasep $ map (formatIdent None) args) <> semi
 formatStmt (Uncall id args _) =

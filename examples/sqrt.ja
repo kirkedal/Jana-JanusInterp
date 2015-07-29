@@ -4,6 +4,11 @@
  * C. Lutz and H. Derby.
  */
 
+procedure doublebit(int bit)
+    local int z = bit
+    bit += z
+    delocal int z = bit / 2
+
 // Calculates floor(sqrt(num))
 procedure root(int num, int root)
     local int bit = 1
@@ -20,18 +25,14 @@ procedure root(int num, int root)
     delocal int bit = 1
     num -= root * root
 
-procedure doublebit(int bit)
-    local int z = bit
-    bit += z
-    delocal int z = bit / 2
-
 procedure main()
     int num
     int root
 
     num += 66
+    printf("%d %d \n", num, root)
     call root(num, root)
-
+    printf("%d %d \n", num, root)
     /*
     root += 25
     uncall root(num, root)
