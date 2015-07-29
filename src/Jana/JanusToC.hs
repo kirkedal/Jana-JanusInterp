@@ -115,13 +115,13 @@ formatStmts = vcat . map formatStmt
 formatStmt :: Stmt -> Doc
 formatStmt (Assign modOp lval expr _) =
   formatLval lval <+> formatModOp modOp <+> formatExpr expr <> semi
-formatStmt (If e1 s1 s2 e2 _) =
+formatStmt (If e1 s1 s2 e2 p) =
   text "if (" <+> (formatExpr e1) <+> text ")" <+> text "{" $+$ 
     nest 4 (formatStmts s1 $+$
-            text "assert (" <+> formatExpr e2 <+> text ")" <> semi) $+$
+            formatStmt (Assert e2 p)) $+$
     text "}" $+$ elsePart
   where elsePart | null s2   = empty
-                 | otherwise = text "else {" $+$ nest 4 (formatStmts s2 $+$ text "assert (!(" <+> formatExpr e2 <+> text "))" <> semi) $+$ text "}"
+                 | otherwise = text "else {" $+$ nest 4 (formatStmts s2 $+$ formatStmt (Assert (UnaryOp Not e2) p)) $+$ text "}"
 -- formatStmt (From e1 s1 s2 e2 _) =
 --   text "from" <+> formatExpr e1 <+> keyword $+$
 --     vcat inside $+$
