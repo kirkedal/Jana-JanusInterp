@@ -227,7 +227,7 @@ getProc (Ident funName pos) =
 --
 
 newtype Eval a = E { runE :: StateT Store (ReaderT EvalEnv (ErrorT JanaError IO)) a }
-               deriving (Monad, MonadIO, MonadError JanaError, MonadReader EvalEnv, MonadState Store)
+               deriving (Applicative, Functor, Monad, MonadIO, MonadError JanaError, MonadReader EvalEnv, MonadState Store)
 
 runEval :: Eval a -> Store -> EvalEnv -> IO (Either JanaError (a, Store))
 runEval eval store procs = runErrorT (runReaderT (runStateT (runE eval) store) procs)
