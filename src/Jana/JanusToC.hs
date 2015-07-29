@@ -11,6 +11,9 @@ import Jana.Invert
 --   or at second function
 -- Parsing variables with pointers
 
+-- MISSING:
+--   Order of functions
+
 commasep = hsep . punctuate (char ',')
 
 
@@ -28,7 +31,7 @@ formatIdent None    id = text (ident id) <> text "_ptr"
 
 formatLval :: Lval -> Doc
 formatLval (Var id) = formatIdent Pointer id
--- formatLval (Lookup id expr) = formatIdent id <> brackets (vcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
+formatLval (Lookup id expr) = formatIdent None id <> brackets (vcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
 
 formatModOp AddEq = text "+="
 formatModOp SubEq = text "-="
@@ -90,17 +93,17 @@ formatExpr = f 0
 
 formatVdecl (Scalar typ id exp _) =
   formatType typ <+> formatIdent Value id <+> formatExp exp <> semi $+$
-  formatType typ <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> semi
-    where
-      formatExp (Just expr) = equals <+> formatExpr expr
-      formatExp Nothing     = equals <+> integer 0
--- CHECK
--- formatVdecl (Array id size a_exp _) =
---   text "int" <+> formatIdent id <> vcat (map formatSize size) $+$ formatExp a_exp
---   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
---         formatSize Nothing  = text "[]"
---         formatExp (Just ex) = equals $+$ formatExpr ex
---         formatExp Nothing   = empty
+    formatType typ <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> semi
+  where
+    formatExp (Just expr) = equals <+> formatExpr expr
+    formatExp Nothing     = equals <+> integer 0
+formatVdecl (Array id size a_exp _) =
+  text "int" <+> formatIdent Value id <> vcat (map formatSize size) <+> formatExp a_exp <> semi $+$
+    text "int" <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> text "[0]" <> semi
+  where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
+        formatSize Nothing  = text "[]"
+        formatExp (Just ex) = equals $+$ formatExpr ex
+        formatExp Nothing   = equals <+> text "{0}"
 
 -- CHECK
 formatLocalDecl (LocalVar typ ident expr p)     = formatVdecl (Scalar typ ident (Just expr) p)
@@ -206,7 +209,12 @@ formatParam (Scalar typ id exp _) =
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
--- CHECK
+formatParam (Array id _size a_exp p) =
+  formatType (Int p) <+> formatIdent Pointer id <> formatExp a_exp
+    where
+      formatExp (Just expr) = equals $+$ formatExpr expr
+      formatExp Nothing     = empty
+
 -- formatParam (Array id size a_exp _) =
 --   text "int" <+> formatIdent id <> vcat (map formatSize size) $+$ formatExp a_exp
 --   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"

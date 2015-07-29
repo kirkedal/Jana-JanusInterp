@@ -4,6 +4,18 @@
  * C. Lutz and H. Derby.
  */
 
+procedure zeroi(int i, int fact[])
+    from fact[i+1] = 0 loop
+        i -= 1
+    until i = 0
+
+procedure nexttry(int try)
+    try += 2
+    if try = 4 then
+        try -= 1
+    fi try = 3
+
+
 
 // factor num into table in fact[]
 procedure factor(int num, int fact[])
@@ -41,23 +53,14 @@ procedure factor(int num, int fact[])
     delocal int i = 0
     delocal int try = 0
 
-procedure zeroi(int i, int fact[])
-    from fact[i+1] = 0 loop
-        i -= 1
-    until i = 0
-
-procedure nexttry(int try)
-    try += 2
-    if try = 4 then
-        try -= 1
-    fi try = 3
-
 procedure main()
     int num      // Number to factor.  Ends up zero
     int fact[20] // Factor table.  Starts zero. Ends with factors in ascending order
 
     num += 840
     call factor(num, fact)
+
+//    printf("%d %d %d %d %d\n", fact[0], fact[1], fact[2], fact[3], fact[4])
 
     /*
     fact[1] += 2
