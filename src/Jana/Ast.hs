@@ -40,6 +40,7 @@ data ModOp
     | XorEq -- ^=
     deriving (Eq, Show)
 
+-- Unary operators
 data UnaryOp
     = Not
     deriving (Eq, Ord)
