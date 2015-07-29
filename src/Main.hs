@@ -5,27 +5,32 @@ import System.IO
 import System.Timeout
 import Control.Monad
 import Data.List
+-- import Jana.ParserBasic
 import Jana.Parser
 import Jana.Eval (runProgram)
 import Jana.Types (defaultOptions, EvalOptions(..))
 import Jana.Invert
+import qualified Jana.JanusToC as JTC
 
 
 data Options = Options
   { timeOut :: Int
   , invert :: Bool
+  , cCode  :: Bool
   , evalOpts :: EvalOptions }
 
 defaults = Options
   { timeOut = -1
   , invert = False
+  , cCode = False
   , evalOpts = defaultOptions }
 
 usage = "usage: jana [options] <file>\n\
         \options:\n\
         \  -m           use 32-bit modular arithmetic\n\
         \  -tN          timeout after N seconds\n\
-        \  -i           print inverted program"
+        \  -i           print inverted program\n\
+        \  -c           print C program"
 
 parseArgs :: IO (Maybe ([String], Options))
 parseArgs =
@@ -49,6 +54,7 @@ addOption opts ('-':'t':time) =
     [(timeVal, "")] -> return $ opts { timeOut = timeVal }
     _               -> Left "non-number given to -t option"
 addOption opts "-i" = return opts { invert = True }
+addOption opts "-c" = return opts { cCode = True }
 addOption _ f = Left $ "invalid option: " ++ f
 
 loadFile :: String -> IO String
@@ -62,6 +68,13 @@ printInverted filename =
        Left err   -> print err >> (exitWith $ ExitFailure 1)
        Right prog -> print $ invertProgram prog
 
+printCcode :: String -> IO ()
+printCcode filename =
+  do text <- loadFile filename
+     case parseProgram filename text of
+       Left err   -> print err >> (exitWith $ ExitFailure 1)
+       Right prog -> print $ JTC.formatProgram prog
+
 parseAndRun :: String -> EvalOptions -> IO ()
 parseAndRun filename evalOptions =
   do text <- loadFile filename
@@ -72,6 +85,7 @@ parseAndRun filename evalOptions =
 main :: IO ()
 main = do args <- parseArgs
           case args of
+            Just ([file], Options { cCode = True }) -> printCcode file
             Just ([file], Options { invert = True }) -> printInverted file
             Just ([file], opts) ->
               do res <- timeout (timeOut opts * 1000000)
