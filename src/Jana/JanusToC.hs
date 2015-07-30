@@ -16,6 +16,8 @@ import Jana.Invert
 
 commasep = hsep . punctuate (char ',')
 
+stmtWithBody :: Doc -> Doc -> Doc
+stmtWithBody lead doc = lead <+> text "{" $+$ (nest 4 doc) $+$ text "}"
 
 formatType (Int _)   = text "int"
 -- formatType (Stack _) = text "stack"
@@ -38,7 +40,6 @@ formatModOp SubEq = text "-="
 formatModOp XorEq = text "^="
 
 -- Operators and their precedence
--- Should match the operator table in Jana.Parser
 unaryOpMap = Map.fromList [
     (Not,  ("!",  5))
   ]
@@ -90,26 +91,8 @@ formatExpr = f 0
         binOpPrec    = snd . (binOpMap Map.!)
         parens' bool = if bool then parens else id
 
-
-formatVdecl (Scalar typ id exp _) =
-  formatType typ <+> formatIdent Value id <+> formatExp exp <> semi 
-  where
-    formatExp (Just expr) = equals <+> formatExpr expr
-    formatExp Nothing     = equals <+> integer 0
-formatVdecl (Array id size a_exp _) =
-  text "int" <+> formatIdent Value id <> vcat (map formatSize size) <+> formatExp a_exp <> semi
-  where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
-        formatSize Nothing  = text "[]"
-        formatExp (Just ex) = equals $+$ formatExpr ex
-        formatExp Nothing   = equals <+> text "{0}"
-
--- CHECK
 formatLocalDecl (LocalVar typ ident expr p)     = formatVdecl (Scalar typ ident (Just expr) p)
-  --formatType typ <+> formatIdent None ident <+> equals <+> formatExpr expr
--- formatLocalDecl (LocalArray ident iexprs expr p) = formatType (Int p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ equals <+> 
---   formatExpr expr
---   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
---         formatIndex Nothing  = text "[]"
+formatLocalDecl (LocalArray ident iexprs expr p) = formatVdecl (Array ident iexprs (Just expr) p)
 formatAssertLocalDecl (LocalVar typ ident expr p) = formatStmt (Assert (BinOp EQ (LV (Var ident) p) expr) p)
 
 formatStmts :: [Stmt] -> Doc
@@ -119,17 +102,14 @@ formatStmt :: Stmt -> Doc
 formatStmt (Assign modOp lval expr _) =
   formatLval lval <+> formatModOp modOp <+> formatExpr expr <> semi
 formatStmt (If e1 s1 s2 e2 p) =
-  text "if (" <+> (formatExpr e1) <+> text ")" <+> text "{" $+$ 
-    nest 4 (formatStmts s1 $+$
-            formatStmt (Assert e2 p)) $+$
-    text "}" $+$ elsePart
+  (text "if" <+> parens (formatExpr e1)) `stmtWithBody` (formatStmts s1 $+$ formatStmt (Assert e2 p)) $+$
+    elsePart
   where elsePart | null s2   = empty
-                 | otherwise = text "else {" $+$ nest 4 (formatStmts s2 $+$ formatStmt (Assert (UnaryOp Not e2) p)) $+$ text "}"
+                 | otherwise = (text "else") `stmtWithBody` (formatStmts s2 $+$ formatStmt (Assert (UnaryOp Not e2) p))
 formatStmt (From e1 s1 s2 e2 p) =
   formatStmts ((Assert e1 p):s1) $+$
-  text "while" <+> parens (formatExpr (UnaryOp Not e2)) <+> text "{" $+$
-    nest 4 (formatStmts $ s2 ++ [(Assert (UnaryOp Not e1) p)] ++ s1) $+$
-    text "}"
+  (text "while" <+> parens (formatExpr (UnaryOp Not e2))) `stmtWithBody` 
+    (formatStmts $ s2 ++ [(Assert (UnaryOp Not e1) p)] ++ s1)
 -- formatStmt (Push id1 id2 _) =
 --   text "push" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
 -- formatStmt (Pop id1 id2 _) =
@@ -158,49 +138,34 @@ formatStmt (Prints (Printf str idents) _) =
 formatStmt (Assert e _) =
   text "assert" <> parens (formatExpr e) <> semi
 
+-- Main procedure
+formatMain (ProcMain vdecls body p) =
+  (formatType (Int p) <+> text "main()") `stmtWithBody`
+    (vcat (map formatVdecl vdecls) $+$
+      text "" $+$
+      formatStmts body $+$
+      text "return 1;")
 
--- formatStmtsAbbrv []         = empty
--- formatStmtsAbbrv [If {}]    = text "..."
--- formatStmtsAbbrv [From {}]  = text "..."
--- formatStmtsAbbrv [Local {}] = text "..."
--- formatStmtsAbbrv [s]        = formatStmt s
--- formatStmtsAbbrv _          = text "..."
+formatVdecl (Scalar typ id exp _) =
+  formatType typ <+> formatIdent Value id <+> formatExp exp <> semi 
+  where
+    formatExp (Just expr) = equals <+> formatExpr expr
+    formatExp Nothing     = equals <+> integer 0
+formatVdecl (Array id size a_exp p) =
+  formatType (Int p) <+> formatIdent Value id <> vcat (map formatSize size) <+> formatExp a_exp <> semi
+  where formatSize (Just e) = brackets $ formatExpr e
+        formatSize Nothing  = brackets empty
+        formatExp (Just ex) = equals $+$ formatExpr ex
+        formatExp Nothing   = equals <+> braces (integer 0)
 
-
--- formatStmtAbbrv (If e1 s1 s2 e2 _) =
---   text "if" <+> formatExpr e1 <+> text "then" $+$
---     nest 4 (formatStmtsAbbrv s1) $+$
---   elsePart $+$
---   text "fi" <+> formatExpr e2
---   where elsePart | null s2   = empty
---                  | otherwise = text "else" $+$ nest 4 (formatStmtsAbbrv s2)
-
--- formatStmtAbbrv (From e1 s1 s2 e2 _) =
---   text "from" <+> formatExpr e1 <+> keyword $+$
---     vcat inside $+$
---   text "until" <+> formatExpr e2
---   where (keyword:inside) = doPart ++ loopPart
---         doPart   | null s1   = []
---                  | otherwise = [text "do", nest 4 (formatStmtsAbbrv s1)]
---         loopPart | null s2   = [empty]
---                  | otherwise = [text "loop", nest 4 (formatStmtsAbbrv s2)]
-
--- formatStmtAbbrv (Local decl1 s decl2 _) =
---   text "local" <+> formatLocalDecl decl1 $+$
---   formatStmtsAbbrv s $+$
---   text "delocal" <+> formatLocalDecl decl2
-
--- formatStmtAbbrv s = formatStmt s
-
-
-formatMain (ProcMain vdecls body _) =
-  text "int main() {" $+$
-    nest 4 (vcat (map formatVdecl vdecls) $+$
-            text "" $+$
-            formatStmts body $+$
-            text "return 1;") $+$
-    text "}"
-
+-- Local procedures
+formatProc proc =
+  (text "void" <+> formatIdent Forward (procname proc) <> 
+    parens (formatParams $ params proc)) `stmtWithBody`
+      (formatStmts $ body proc) $+$
+    (text "void" <+> formatIdent Reverse (procname proc) <> 
+    parens (formatParams $ params proc)) `stmtWithBody`
+      (formatStmts $ invertStmts Locally $ body proc)
 
 formatParam (Scalar typ id exp _) =
   formatType typ <+> formatIdent Reference id <> formatExp exp
@@ -213,27 +178,10 @@ formatParam (Array id _size a_exp p) =
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
 
--- formatParam (Array id size a_exp _) =
---   text "int" <+> formatIdent id <> vcat (map formatSize size) $+$ formatExp a_exp
---   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
---         formatSize Nothing  = text "[]"
---         formatExp (Just ex) = equals $+$ formatExpr ex
---         formatExp Nothing   = empty
-
 formatParams = commasep . map formatParam
 
-formatProc proc =
-  text "void" <+> formatIdent Forward (procname proc) <> 
-    parens (formatParams $ params proc) <+> text "{" $+$
-    nest 4 (formatStmts $ body proc) $+$
-    text "}" $+$
-    text "void" <+> formatIdent Reverse (procname proc) <> 
-    parens (formatParams $ params proc) <+> text "{" $+$
-    nest 4 (formatStmts $ invertStmts Locally $ body proc) $+$
-    text "}"
 
-
-
+-- Program
 formatProgram (Program [main] procs) =
   text "/* Translated from Janus program */" $+$
   text "#include <stdio.h>      /* printf */" $+$
