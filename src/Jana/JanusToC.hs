@@ -20,14 +20,17 @@ commasep = hsep . punctuate (char ',')
 formatType (Int _)   = text "int"
 -- formatType (Stack _) = text "stack"
 
-data IdentType = Forward | Reverse | Value | Pointer | None
+data IdentType = Forward | Reverse | Value | Pointer | None | Reference
 
 formatIdent :: IdentType -> Ident -> Doc
-formatIdent Forward id = text (ident id) <> text "_forward"
-formatIdent Reverse id = text (ident id) <> text "_reverse"
-formatIdent Value   id = text (ident id) <> text "_val"
-formatIdent Pointer id = text "*" <> text (ident id) <> text "_ptr"
-formatIdent None    id = text (ident id) <> text "_ptr"
+formatIdent Forward   id = text (ident id) <> text "_forward"
+formatIdent Reverse   id = text (ident id) <> text "_reverse"
+formatIdent Value     id = text (ident id)
+formatIdent Reference id = text "&" <> text (ident id)
+formatIdent Pointer   id = text (ident id)
+--formatIdent Pointer   id = text "*" <> text (ident id) <> text "_ptr"
+formatIdent None      id = text (ident id)
+--formatIdent None      id = text (ident id) <> text "_ptr"
 
 formatLval :: Lval -> Doc
 formatLval (Var id) = formatIdent Pointer id
@@ -92,14 +95,16 @@ formatExpr = f 0
 
 
 formatVdecl (Scalar typ id exp _) =
-  formatType typ <+> formatIdent Value id <+> formatExp exp <> semi $+$
-    formatType typ <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> semi
+  formatType typ <+> formatIdent Value id <+> formatExp exp <> semi 
+  -- $+$
+  --  formatType typ <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> semi
   where
     formatExp (Just expr) = equals <+> formatExpr expr
     formatExp Nothing     = equals <+> integer 0
 formatVdecl (Array id size a_exp _) =
-  text "int" <+> formatIdent Value id <> vcat (map formatSize size) <+> formatExp a_exp <> semi $+$
-    text "int" <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> text "[0]" <> semi
+  text "int" <+> formatIdent Value id <> vcat (map formatSize size) <+> formatExp a_exp <> semi
+  -- $+$
+  --  text "int" <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> text "[0]" <> semi
   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatSize Nothing  = text "[]"
         formatExp (Just ex) = equals $+$ formatExpr ex
@@ -205,12 +210,12 @@ formatMain (ProcMain vdecls body _) =
 
 
 formatParam (Scalar typ id exp _) =
-  formatType typ <+> formatIdent Pointer id <> formatExp exp
+  formatType typ <+> formatIdent Reference id <> formatExp exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
 formatParam (Array id _size a_exp p) =
-  formatType (Int p) <+> formatIdent Pointer id <> formatExp a_exp
+  formatType (Int p) <+> formatIdent Reference id <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
