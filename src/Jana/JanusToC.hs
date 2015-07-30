@@ -20,21 +20,18 @@ commasep = hsep . punctuate (char ',')
 formatType (Int _)   = text "int"
 -- formatType (Stack _) = text "stack"
 
-data IdentType = Forward | Reverse | Value | Pointer | None | Reference
+data IdentType = Forward | Reverse | Value | Pointer | Reference
 
 formatIdent :: IdentType -> Ident -> Doc
 formatIdent Forward   id = text (ident id) <> text "_forward"
 formatIdent Reverse   id = text (ident id) <> text "_reverse"
 formatIdent Value     id = text (ident id)
 formatIdent Reference id = text "&" <> text (ident id)
-formatIdent Pointer   id = text (ident id)
---formatIdent Pointer   id = text "*" <> text (ident id) <> text "_ptr"
-formatIdent None      id = text (ident id)
---formatIdent None      id = text (ident id) <> text "_ptr"
+formatIdent Pointer   id = text "*" <> text (ident id)
 
 formatLval :: Lval -> Doc
-formatLval (Var id) = formatIdent Pointer id
-formatLval (Lookup id expr) = formatIdent None id <> brackets (vcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
+formatLval (Var id) = formatIdent Value id
+formatLval (Lookup id expr) = formatIdent Value id <> brackets (vcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
 
 formatModOp AddEq = text "+="
 formatModOp SubEq = text "-="
@@ -96,15 +93,11 @@ formatExpr = f 0
 
 formatVdecl (Scalar typ id exp _) =
   formatType typ <+> formatIdent Value id <+> formatExp exp <> semi 
-  -- $+$
-  --  formatType typ <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> semi
   where
     formatExp (Just expr) = equals <+> formatExpr expr
     formatExp Nothing     = equals <+> integer 0
 formatVdecl (Array id size a_exp _) =
   text "int" <+> formatIdent Value id <> vcat (map formatSize size) <+> formatExp a_exp <> semi
-  -- $+$
-  --  text "int" <+> formatIdent Pointer id <+> equals <+> text "&" <> formatIdent Value id <> text "[0]" <> semi
   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatSize Nothing  = text "[]"
         formatExp (Just ex) = equals $+$ formatExpr ex
@@ -146,9 +139,9 @@ formatStmt (Local decl1 s decl2 _) =
   formatStmts s $+$
   formatAssertLocalDecl decl2
 formatStmt (Call id args _) =
-  formatIdent Forward id <> parens (commasep $ map (formatIdent None) args) <> semi
+  formatIdent Forward id <> parens (commasep $ map (formatIdent Value) args) <> semi
 formatStmt (Uncall id args _) =
-  formatIdent Reverse id <> parens (commasep $ map (formatIdent None) args) <> semi
+  formatIdent Reverse id <> parens (commasep $ map (formatIdent Value) args) <> semi
 formatStmt (Swap id1 id2 p) = formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
 -- formatStmt (UserError msg _) =
 --   text "error" <> parens (text (show msg))
@@ -157,7 +150,7 @@ formatStmt (Swap id1 id2 p) = formatStmts [Assign XorEq id1 (LV id2 p) p, Assign
 formatStmt (Prints (Printf str []) _) =
   text "printf" <> parens (text (show str)) <> semi
 formatStmt (Prints (Printf str idents) _) =
-  text "printf" <> parens (text (show str) <> comma <+> commasep (map (formatIdent Pointer) idents)) <> semi
+  text "printf" <> parens (text (show str) <> comma <+> commasep (map (formatIdent Value) idents)) <> semi
 -- formatStmt (Prints (Show idents) _) =
 --   text "show" <> parens (commasep $ map formatIdent idents)
 -- formatStmt (Skip _) =
@@ -215,7 +208,7 @@ formatParam (Scalar typ id exp _) =
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
 formatParam (Array id _size a_exp p) =
-  formatType (Int p) <+> formatIdent Reference id <> formatExp a_exp
+  formatType (Int p) <+> formatIdent Pointer id <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
@@ -257,7 +250,7 @@ instance ShowC Type where
   showC = render . formatType
 
 instance ShowC Ident where
-  showC = render . formatIdent None
+  showC = render . formatIdent Value
 
 instance ShowC Lval where
   showC = render . formatLval

@@ -9,28 +9,28 @@ procedure zeroi(int i, int fact[])
         i -= 1
     until i = 0
 
-procedure nexttry(int try)
-    try += 2
-    if try = 4 then
-        try -= 1
-    fi try = 3
+procedure nexttryFactor(int tryFactor)
+    tryFactor += 2
+    if tryFactor = 4 then
+        tryFactor -= 1
+    fi tryFactor = 3
 
 
 
 // factor num into table in fact[]
 procedure factor(int num, int fact[])
-    local int try = 0   // Attempted factor.
+    local int tryFactor = 0   // Attempted factor.
     local int i = 0     // Pointer to last factor in factor table.
-    from (try = 0) && (num > 1) loop
-        call nexttry(try)
-        from fact[i] != try loop               // Divide out all occurrences of this
+    from (tryFactor = 0) && (num > 1) loop
+        call nexttryFactor(tryFactor)
+        from fact[i] != tryFactor loop               // Divide out all occurrences of this
             i += 1                             // factor
-            fact[i] += try
-            local int z = num / try
+            fact[i] += tryFactor
+            local int z = num / tryFactor
             z <=> num
-            delocal int z = num * try
-        until (num % try) != 0
-    until (try * try) > num                    // Exit early if possible
+            delocal int z = num * tryFactor
+        until (num % tryFactor) != 0
+    until (tryFactor * tryFactor) > num                    // Exit early if possible
 
     if num != 1 then
         i += 1                                 // Put last prime away, if not done
@@ -41,17 +41,17 @@ procedure factor(int num, int fact[])
         num -= 1
     fi fact[i] != fact[i-1]
 
-    if (fact[i-1] * fact[i-1]) < fact[i] then  // Zero try
-        from (try * try) > fact[i] loop
-            uncall nexttry(try)
-        until try = 0
+    if (fact[i-1] * fact[i-1]) < fact[i] then  // Zero tryFactor
+        from (tryFactor * tryFactor) > fact[i] loop
+            uncall nexttryFactor(tryFactor)
+        until tryFactor = 0
     else
-        try -= fact[i-1]
+        tryFactor -= fact[i-1]
     fi (fact[i-1] * fact[i-1]) < fact[i]
 
     call zeroi(i, fact)                        // Zero i
     delocal int i = 0
-    delocal int try = 0
+    delocal int tryFactor = 0
 
 procedure main()
     int num      // Number to factor.  Ends up zero
