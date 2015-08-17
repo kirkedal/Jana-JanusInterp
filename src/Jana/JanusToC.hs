@@ -182,14 +182,14 @@ formatParams = commasep . map formatParam
 
 
 -- Program
-formatProgram (Program [main] procs) =
+formatProgram (Program mains procs) =
   text "/* Translated from Janus program */" $+$
   text "#include <stdio.h>      /* printf */" $+$
   text "#include <assert.h>" $+$ 
   text "" $+$
   vcat (intersperse (text "") $ map formatProc procs) $+$
   text "" $+$
-  formatMain main
+  vcat (intersperse (text "") $ map formatMain mains)
 
 class ShowC a where
   showC :: a -> String

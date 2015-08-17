@@ -75,6 +75,13 @@ printCcode filename =
        Left err   -> print err >> (exitWith $ ExitFailure 1)
        Right prog -> print $ JTC.formatProgram prog
 
+printInvertedCcode :: String -> IO ()
+printInvertedCcode filename =
+  do text <- loadFile filename
+     case parseProgram filename text of
+       Left err   -> print err >> (exitWith $ ExitFailure 1)
+       Right prog -> print $ JTC.formatProgram $ invertProgram prog
+
 parseAndRun :: String -> EvalOptions -> IO ()
 parseAndRun filename evalOptions =
   do text <- loadFile filename
@@ -85,6 +92,7 @@ parseAndRun filename evalOptions =
 main :: IO ()
 main = do args <- parseArgs
           case args of
+            Just ([file], Options { cCode = True, invert = True }) -> printInvertedCcode file
             Just ([file], Options { cCode = True }) -> printCcode file
             Just ([file], Options { invert = True }) -> printInverted file
             Just ([file], opts) ->
