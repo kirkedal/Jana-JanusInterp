@@ -110,6 +110,8 @@ formatStmt (From e1 s1 s2 e2 p) =
   formatStmts ((Assert e1 p):s1) $+$
   (text "while" <+> parens (formatExpr (UnaryOp Not e2))) `stmtWithBody` 
     (formatStmts $ s2 ++ [(Assert (UnaryOp Not e1) p)] ++ s1)
+-- Implement with break to avoid code duplication of s1
+
 -- formatStmt (Push id1 id2 _) =
 --   text "push" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
 -- formatStmt (Pop id1 id2 _) =

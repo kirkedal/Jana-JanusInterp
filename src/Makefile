@@ -1,4 +1,4 @@
-FILES=Main.hs Jana/*.hs
+FILES=Main.hs RevTM.hs Jana/*.hs RevTM/*.hs
 
 all: main
 
@@ -14,6 +14,10 @@ optimized, opt: $(FILES)
 haddock, h: $(FILES)
 	haddock -h -o ../docs/ Main.hs
 
+revTM: $(FILES)
+	ghc --make -o RevTMcomp RevTM.hs 
+
+
 #bbpar: busyBeaver.hs TM.hs tape.hs 
 #	ghc --make busyBeaver.hs -O2 -rtsopts -threaded -o bb
 
@@ -21,5 +25,6 @@ clean:
 	-rm -f Main
 	-rm -f *.hi *.o
 	-rm -f Jana/*.hi Jana/*.o
+	-rm -f RevTM/*.hi RevTM/*.o
 
 
