@@ -33,7 +33,7 @@ formatIdent Pointer   id = text "*" <> text (ident id)
 
 formatLval :: Lval -> Doc
 formatLval (Var id) = formatIdent Value id
-formatLval (Lookup id expr) = formatIdent Value id <> brackets (vcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
+formatLval (Lookup id expr) = formatIdent Value id <> cat (map (\e -> brackets $ formatExpr e) expr)
 
 formatModOp AddEq = text "+="
 formatModOp SubEq = text "-="
@@ -125,8 +125,8 @@ formatStmt (Call id args _) =
 formatStmt (Uncall id args _) =
   formatIdent Reverse id <> parens (commasep $ map (formatIdent Value) args) <> semi
 formatStmt (Swap id1 id2 p) = formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
--- formatStmt (UserError msg _) =
---   text "error" <> parens (text (show msg))
+formatStmt (UserError msg _) =
+  text "printf" <> parens (text (show msg)) <> semi $+$ text "exit()" <> semi
 -- formatStmt (Prints (Print str) _) =
 --   text "print" <> parens (text (show str))
 formatStmt (Prints (Printf str []) _) =
