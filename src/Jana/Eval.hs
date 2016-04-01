@@ -188,7 +188,8 @@ evalAliasSize pos _ _ _ = pos <!!> arraySize
 evalMain :: ProcMain -> Eval ()
 evalMain proc@(ProcMain vdecls body pos) =
   do mapM_ initBinding vdecls
-     makeBreak
+     whenDebugging $ 
+       (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.") >> makeBreak
      evalStmts body
   where 
     initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
@@ -267,27 +268,14 @@ breakStmt :: Stmt -> Eval ()
 breakStmt stmt = 
   do 
     debugging <- isDebuggerRunning
-    if debugging
-    then   
-      do isBreak <- checkForBreak $ stmtPos stmt
-         if isBreak
-           then 
-             do liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine $ stmtPos stmt) ++ "] "
-                makeBreak
-                evalStmt stmt
-         else evalStmt stmt
-    else evalStmt stmt
+    isBreak <- checkForBreak $ stmtPos stmt
+    when (debugging && isBreak) $ 
+      (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine $ stmtPos stmt) ++ "] ") >> makeBreak
+    evalStmt stmt
 
 makeBreak :: Eval ()
 makeBreak =
-  do debugging <- isDebuggerRunning
-     if debugging
-       then 
-         do s <- liftIO $ getLine
-            parseDBCommand $ splitArgs s
-            return ()
-       else 
-         return ()
+  whenDebugging ((parseDBCommand . splitArgs) =<< (liftIO $ getLine))
   where 
     splitArgs s = 
       case dropWhile isSpace s of
@@ -301,15 +289,16 @@ parseDBCommand ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak
 parseDBCommand ("add":n)    = parseDBCommand ("a":n)
 parseDBCommand ["c"]        = return ()
 parseDBCommand ["continue"] = parseDBCommand ["c"]
+parseDBCommand ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak
+parseDBCommand ("delete":n) = parseDBCommand ("d":n)
 parseDBCommand ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak
 parseDBCommand ["help"]     = parseDBCommand ["h"]
-parseDBCommand ["p",var]    = 
-  do val <- getVar $ Ident var $ newPos "" 0 0
-     liftIO $ putStrLn $ printVdecl var val
-     makeBreak
-parseDBCommand ["print",v]  = parseDBCommand ["p",v]
-parseDBCommand ("r":n)      = mapM (removeBreakPoint . read) n >> makeBreak
-parseDBCommand ("remove":n)    = parseDBCommand ("r":n)
+parseDBCommand ("p":var)    = mapM printVar var >> makeBreak
+  where 
+    printVar var =
+     do val <- getVar $ Ident var $ newPos "" 0 0
+        liftIO $ putStrLn $ printVdecl var val 
+parseDBCommand ("print":v)  = parseDBCommand ("p":v)
 parseDBCommand ["s"]        = 
   do env <- get
      liftIO $ showStore env >>= putStrLn
@@ -319,14 +308,14 @@ parseDBCommand str          = (liftIO $ putStrLn errorTxt) >> makeBreak
   where 
     errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
 
-dbUsage = "usage of the jana debugger\n\
+dbUsage = "Usage of the jana debugger\n\
         \NOTICE: all breakpoints will be added at the beginning of a line\n\
         \options:\n\
-        \  a[dd] N+     adds a breakpoint at line N\n\
+        \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
         \  c[ontinue]   continues execution to next breakpoint or the end\n\
         \  h[elp]       this menu\n\
-        \  p[rint] V    prints the content of variable V\n\
-        \  r[emove] N+  removes a breakpoint at line N\n\
+        \  p[rint] V*   prints the content of variables V (space separated)\n\
+        \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
         \  s[tore]      prints entire store"
 
 

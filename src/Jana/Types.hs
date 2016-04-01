@@ -10,7 +10,7 @@ module Jana.Types (
     EvalOptions(..), defaultOptions,
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
     Eval, runEval, (<!!>),
-    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning
+    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging
     ) where
 
 import Prelude hiding (GT, LT, EQ)
@@ -271,6 +271,11 @@ isDebuggerRunning :: Eval Bool
 isDebuggerRunning =
   do env <- ask
      return $ runDebugger $ evalOptions env
+
+whenDebugging :: Eval () -> Eval ()
+whenDebugging op =
+  do db <- isDebuggerRunning
+     when db op
 
 --
 -- Evaluation
