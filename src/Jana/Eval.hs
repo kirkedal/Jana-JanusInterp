@@ -12,7 +12,7 @@ import Data.Char (toLower, isSpace)
 import Data.List (genericSplitAt, genericReplicate, intercalate, genericTake,  genericIndex)
 import Control.Monad
 import Control.Monad.State
-import Control.Monad.Error
+import Control.Monad.Except
 import Control.Monad.Reader
 
 import Control.Monad.Coroutine
@@ -271,7 +271,6 @@ breakStmt stmt =
     isBreak <- checkForBreak $ stmtPos stmt
     when (debugging && isBreak) $ 
       (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine $ stmtPos stmt) ++ "] ") >> makeBreak
-
     evalStmt stmt
 
 makeBreak :: Eval ()
@@ -318,7 +317,6 @@ dbUsage = "Usage of the jana debugger\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
         \  s[tore]      prints entire store"
-
 
 
 evalStmt :: Stmt -> Eval ()

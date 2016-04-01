@@ -1,6 +1,6 @@
 module Jana.Error where
 
-import Control.Monad.Error
+import Control.Monad.Except
 import Data.List (intercalate, sort)
 import Text.Printf (printf)
 import Text.PrettyPrint
@@ -55,9 +55,9 @@ instance Show Message where
 
 data JanaError = JanaError SourcePos [Message]
 
-instance Error JanaError where
-  noMsg  = newErrorUnknown (newPos "" 0 0)
-  strMsg = newErrorMessage (newPos "" 0 0) . Message
+-- instance Except JanaError where
+--   noMsg  = newErrorUnknown (newPos "" 0 0)
+--   strMsg = newErrorMessage (newPos "" 0 0) . Message
 
 errorPos :: JanaError -> SourcePos
 errorPos (JanaError pos _)

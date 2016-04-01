@@ -20,7 +20,7 @@ import Data.IORef
 import qualified Data.Set as Set
 import Control.Monad.State
 import Control.Monad.Reader
-import Control.Monad.Error
+import Control.Monad.Except
 import Text.Printf (printf)
 import qualified Data.Maybe as Maybe
 import qualified Data.Map as Map
@@ -281,11 +281,11 @@ whenDebugging op =
 -- Evaluation
 --
 
-newtype Eval a = E { runE :: StateT EvalState (ReaderT EvalEnv (ErrorT JanaError IO)) a }
+newtype Eval a = E { runE :: StateT EvalState (ReaderT EvalEnv (ExceptT JanaError IO)) a }
                deriving (Applicative, Functor, Monad, MonadIO, MonadError JanaError, MonadReader EvalEnv, MonadState EvalState)
 
 runEval :: Eval a -> EvalState -> EvalEnv -> IO (Either JanaError (a, EvalState))
-runEval eval evalState procs = runErrorT (runReaderT (runStateT (runE eval) evalState) procs)
+runEval eval evalState procs = runExceptT (runReaderT (runStateT (runE eval) evalState) procs)
 
 throwJanaError :: SourcePos -> Message -> Eval a
 throwJanaError pos msg = throwError $ newErrorMessage pos msg
