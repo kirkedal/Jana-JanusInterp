@@ -261,13 +261,7 @@ assignLval modOp (Lookup id idxExpr) expr pos =
 evalStmts ::[Stmt] -> Eval ()
 evalStmts = mapM_ (\stmt -> inStatement stmt $ breakStmt stmt)
 
--- breakStmt :: Stmt -> Coroutine (Yield Int) Eval ()
--- breakStmt stmt = 
---   do 
---     isBreak <- lift $ checkForBreak $ stmtPos stmt
---     if isBreak
---       then yield 1
---       else lift $ evalStmt stmt
+
               
 breakStmt :: Stmt -> Eval ()
 breakStmt stmt = 
@@ -325,8 +319,6 @@ parseDBCommand str          = (liftIO $ putStrLn errorTxt) >> makeBreak
   where 
     errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
 
-
-
 dbUsage = "usage of the jana debugger\n\
         \NOTICE: all breakpoints will be added at the beginning of a line\n\
         \options:\n\
@@ -338,32 +330,6 @@ dbUsage = "usage of the jana debugger\n\
         \  s[tore]      prints entire store"
 
 
-
-  -- do breakLine <- getBreakStart
-  --    case breakLine of
-  --     Nothing -> 
-  --         -- Find breaks
-  --     evalStmt stmt
-  --     (Just line) ->
-  --       if checkLine line (stmtPos stmt)
-  --         then do clearBreakStart
-  --                 evalStmt stmt
-  --         else return ()
-
-contBreakStmt :: Stmt -> SourcePos
-contBreakStmt (Assign    _ _ _   p) = p
-contBreakStmt (If        _ _ _ _ p) = p
-contBreakStmt (From      _ _ _ _ p) = p
-contBreakStmt (Push      _ _     p) = p
-contBreakStmt (Pop       _ _     p) = p
-contBreakStmt (Local     _ _ _   p) = p
-contBreakStmt (Call      _ _     p) = p
-contBreakStmt (Uncall    _ _     p) = p
-contBreakStmt (UserError _       p) = p
-contBreakStmt (Swap      _ _     p) = p
-contBreakStmt (Prints    _       p) = p
-contBreakStmt (Skip              p) = p
-contBreakStmt (Assert    _       p) = p
 
 evalStmt :: Stmt -> Eval ()
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
