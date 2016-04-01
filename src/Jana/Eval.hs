@@ -8,12 +8,15 @@ module Jana.Eval (
 
 import Prelude hiding (GT, LT, EQ, userError)
 import System.Exit
-import Data.Char (toLower)
+import Data.Char (toLower, isSpace)
 import Data.List (genericSplitAt, genericReplicate, intercalate, genericTake,  genericIndex)
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Error
 import Control.Monad.Reader
+
+import Control.Monad.Coroutine
+import Control.Monad.Coroutine.SuspensionFunctors (Yield, yield)
 
 import Text.Parsec.Pos
 
@@ -133,7 +136,7 @@ runProgram _ (Program [main] procs) evalOptions =
     Right procEnv ->
       let env = EE { procEnv = procEnv
                    , evalOptions = evalOptions
-                   , aliases = Jana.Aliases.empty }
+                   , aliases = Jana.Aliases.empty}
       in do runRes <- runEval (evalMain main) emptyStore env
             case runRes of
               Right (_, s) -> showStore s >>= putStrLn
@@ -185,6 +188,7 @@ evalAliasSize pos _ _ _ = pos <!!> arraySize
 evalMain :: ProcMain -> Eval ()
 evalMain proc@(ProcMain vdecls body pos) =
   do mapM_ initBinding vdecls
+     makeBreak
      evalStmts body
   where 
     initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
@@ -212,11 +216,11 @@ evalProc :: Proc -> [Ident] -> Eval ()
 evalProc proc args = inProcedure proc $
   do checkNumArgs (length vdecls) (length args)
      checkArgTypes
-     oldStore <- get
+     oldStore <- getStore
      newStore <- localStore
-     put newStore
+     putStore newStore
      local updateAliases (evalStmts $ body proc)
-     put oldStore
+     putStore oldStore
   where vdecls = params proc
         refs = mapM getRef args
         procPos Proc { procname = Ident _ pos } = pos
@@ -254,8 +258,112 @@ assignLval modOp (Lookup id idxExpr) expr pos =
      setVar id $ JArray sIdx arrUpd
   where exprPos = getExprPos expr
 
-evalStmts :: [Stmt] -> Eval ()
-evalStmts = mapM_ (\stmt -> inStatement stmt $ evalStmt stmt)
+evalStmts ::[Stmt] -> Eval ()
+evalStmts = mapM_ (\stmt -> inStatement stmt $ breakStmt stmt)
+
+-- breakStmt :: Stmt -> Coroutine (Yield Int) Eval ()
+-- breakStmt stmt = 
+--   do 
+--     isBreak <- lift $ checkForBreak $ stmtPos stmt
+--     if isBreak
+--       then yield 1
+--       else lift $ evalStmt stmt
+              
+breakStmt :: Stmt -> Eval ()
+breakStmt stmt = 
+  do 
+    debugging <- isDebuggerRunning
+    if debugging
+    then   
+      do isBreak <- checkForBreak $ stmtPos stmt
+         if isBreak
+           then 
+             do liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine $ stmtPos stmt) ++ "] "
+                makeBreak
+                evalStmt stmt
+         else evalStmt stmt
+    else evalStmt stmt
+
+makeBreak :: Eval ()
+makeBreak =
+  do debugging <- isDebuggerRunning
+     if debugging
+       then 
+         do s <- liftIO $ getLine
+            parseDBCommand $ splitArgs s
+            return ()
+       else 
+         return ()
+  where 
+    splitArgs s = 
+      case dropWhile isSpace s of
+        "" -> []
+        s' -> w : splitArgs s''
+          where (w, s'') = break isSpace s'
+
+
+parseDBCommand :: [String] -> Eval ()
+parseDBCommand ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak
+parseDBCommand ("add":n)    = parseDBCommand ("a":n)
+parseDBCommand ["c"]        = return ()
+parseDBCommand ["continue"] = parseDBCommand ["c"]
+parseDBCommand ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak
+parseDBCommand ["help"]     = parseDBCommand ["h"]
+parseDBCommand ["p",var]    = 
+  do val <- getVar $ Ident var $ newPos "" 0 0
+     liftIO $ putStrLn $ printVdecl var val
+     makeBreak
+parseDBCommand ["print",v]  = parseDBCommand ["p",v]
+parseDBCommand ("r":n)      = mapM (removeBreakPoint . read) n >> makeBreak
+parseDBCommand ("remove":n)    = parseDBCommand ("r":n)
+parseDBCommand ["s"]        = 
+  do env <- get
+     liftIO $ showStore env >>= putStrLn
+     makeBreak
+parseDBCommand ["store"]    = parseDBCommand ["s"]
+parseDBCommand str          = (liftIO $ putStrLn errorTxt) >> makeBreak
+  where 
+    errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
+
+
+
+dbUsage = "usage of the jana debugger\n\
+        \NOTICE: all breakpoints will be added at the beginning of a line\n\
+        \options:\n\
+        \  a[dd] N+     adds a breakpoint at line N\n\
+        \  c[ontinue]   continues execution to next breakpoint or the end\n\
+        \  h[elp]       this menu\n\
+        \  p[rint] V    prints the content of variable V\n\
+        \  r[emove] N+  removes a breakpoint at line N\n\
+        \  s[tore]      prints entire store"
+
+
+
+  -- do breakLine <- getBreakStart
+  --    case breakLine of
+  --     Nothing -> 
+  --         -- Find breaks
+  --     evalStmt stmt
+  --     (Just line) ->
+  --       if checkLine line (stmtPos stmt)
+  --         then do clearBreakStart
+  --                 evalStmt stmt
+  --         else return ()
+
+contBreakStmt :: Stmt -> SourcePos
+contBreakStmt (Assign    _ _ _   p) = p
+contBreakStmt (If        _ _ _ _ p) = p
+contBreakStmt (From      _ _ _ _ p) = p
+contBreakStmt (Push      _ _     p) = p
+contBreakStmt (Pop       _ _     p) = p
+contBreakStmt (Local     _ _ _   p) = p
+contBreakStmt (Call      _ _     p) = p
+contBreakStmt (Uncall    _ _     p) = p
+contBreakStmt (UserError _       p) = p
+contBreakStmt (Swap      _ _     p) = p
+contBreakStmt (Prints    _       p) = p
+contBreakStmt (Skip              p) = p
+contBreakStmt (Assert    _       p) = p
 
 evalStmt :: Stmt -> Eval ()
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
@@ -357,16 +465,14 @@ evalStmt (Swap id1 id2 pos) =
          setVar id $ JArray sIdx arrUpd
     setLval _ val = 
       pos <!!> swapTypeError (showValueType val) "array"
-
     Var x1 `isSameArrayElement` Var x2 = return False
     Lookup x1 e1 `isSameArrayElement` Lookup x2 e2 =
         do v1 <- mapM (evalExpr Nothing) e1
            v2 <- mapM (evalExpr Nothing) e2
            return $ x1 == x2 && v1 == v2
-  
 evalStmt (UserError msg pos)          = pos <!!> userError msg
 evalStmt (Prints (Print msg) pos)     = liftIO $ putStrLn msg
-evalStmt (Prints (Printf msg []) pos) = evalStmt $ Prints (Print msg) pos
+evalStmt (Prints (Printf msg []) pos) = evalStmts [Prints (Print msg) pos]
 evalStmt (Prints (Printf msg vars) pos) =
   do varList' <- varList
      case printfRender [msg] varList' of
@@ -384,6 +490,22 @@ evalStmt (Prints (Show vars) pos) =
         showVar var = liftM (printVdecl (ident var)) (getVar var)
 evalStmt (Skip _) = return ()
 evalStmt (Assert e pos) = assertTrue e
+
+stmtPos :: Stmt -> SourcePos
+stmtPos (Assign    _ _ _   p) = p
+stmtPos (If        _ _ _ _ p) = p
+stmtPos (From      _ _ _ _ p) = p
+stmtPos (Push      _ _     p) = p
+stmtPos (Pop       _ _     p) = p
+stmtPos (Local     _ _ _   p) = p
+stmtPos (Call      _ _     p) = p
+stmtPos (Uncall    _ _     p) = p
+stmtPos (UserError _       p) = p
+stmtPos (Swap      _ _     p) = p
+stmtPos (Prints    _       p) = p
+stmtPos (Skip              p) = p
+stmtPos (Assert    _       p) = p
+
 
 evalLval :: Maybe Lval -> Lval -> Eval Value
 evalLval lv (Var id) = checkLvalAlias lv (Var id) >> getVar id

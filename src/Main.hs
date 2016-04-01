@@ -30,7 +30,9 @@ usage = "usage: jana [options] <file>\n\
         \  -m           use 32-bit modular arithmetic\n\
         \  -tN          timeout after N seconds\n\
         \  -i           print inverted program\n\
-        \  -c           print C program"
+        \  -c           print C program\n\
+        \  -d           interactive debug mode\n\
+        \                 (type \"h[elp]\" for options)"
 
 parseArgs :: IO (Maybe ([String], Options))
 parseArgs =
@@ -55,6 +57,8 @@ addOption opts ('-':'t':time) =
     _               -> Left "non-number given to -t option"
 addOption opts "-i" = return opts { invert = True }
 addOption opts "-c" = return opts { cCode = True }
+addOption opts@(Options { evalOpts = evalOptions }) "-d" =
+ return $ opts { evalOpts = evalOptions {runDebugger = True } }
 addOption _ f = Left $ "invalid option: " ++ f
 
 loadFile :: String -> IO String

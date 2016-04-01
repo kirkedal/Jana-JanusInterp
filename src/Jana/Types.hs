@@ -4,18 +4,20 @@ module Jana.Types (
     Array, Stack, Index,
     Value(..), nil, performOperation, performModOperation,
     showValueType, typesMatch, truthy, findIndex,
-    Store, printVdecl, showStore, emptyStore, storeFromList,
+    Store, printVdecl, showStore, emptyStore, storeFromList, putStore, getStore,
     getRef, getVar, getRefValue, bindVar, unbindVar, setVar,
     EvalEnv(..),
     EvalOptions(..), defaultOptions,
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
-    Eval, runEval, (<!!>)
+    Eval, runEval, (<!!>),
+    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning
     ) where
 
 import Prelude hiding (GT, LT, EQ)
 import Data.Bits
 import Data.List (intercalate, genericSplitAt)
 import Data.IORef
+import qualified Data.Set as Set
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Error
@@ -132,26 +134,64 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
 -- Environment
 --
 
+data EvalState = ES { breakPoints :: BreakPoints
+                    , store :: Store}
+
+-- Break points
+
+type BreakPoints = Set.Set Line
+
+checkLine :: Line -> SourcePos -> Bool
+checkLine l p =
+  l == sourceLine p
+
+checkForBreak :: SourcePos -> Eval Bool
+checkForBreak s =
+  do evalState <- get
+     return $ Set.member (sourceLine s) (breakPoints evalState)
+
+removeBreakPoint :: Line -> Eval ()
+removeBreakPoint l = 
+  modify $ \x -> x {breakPoints = Set.delete l (breakPoints x)}
+
+addBreakPoint :: Line -> Eval ()
+addBreakPoint l = 
+  modify $ \x -> x {breakPoints = Set.insert l (breakPoints x)}
+
+
+-- Store
+
 type Store = Map.Map String (IORef Value)
+
+getStore :: Eval Store
+getStore =
+  do evalState <- get
+     return $ store evalState
+
+putStore :: Store -> Eval()
+putStore s =
+  do evalState <- get
+     put $ evalState {store = s}
 
 printVdecl :: String -> Value -> String
 printVdecl name val@(JArray i xs) = printf "%s%s = %s" name (concatMap (\x -> "["++ show x ++ "]") i) (show val)
 printVdecl name val = printf "%s = %s" name (show val)
 
-showStore :: Store -> IO String
-showStore store =
+showStore :: EvalState -> IO String
+showStore s =
   liftM (intercalate "\n")
         (mapM (\(name, ref) -> liftM (printVdecl name) (readIORef ref))
-              (Map.toList store))
+              (Map.toList (store s)))
 
-emptyStore = Map.empty
+emptyStore = ES {breakPoints = Set.empty, store = Map.empty}
 
 storeFromList :: [(String, IORef Value)] -> Store
 storeFromList = Map.fromList
 
 getRef :: Ident -> Eval (IORef Value)
 getRef (Ident name pos) =
-  do storeEnv <- get
+  do evalState <- get
+     let storeEnv = store evalState
      case Map.lookup name storeEnv of
        Just ref -> return ref
        Nothing  -> pos <!!> unboundVar name
@@ -165,14 +205,18 @@ getRefValue = liftIO . readIORef
 -- Bind a variable name to a new reference
 bindVar :: Ident -> Value -> Eval ()
 bindVar (Ident name pos) val =
-  do storeEnv <- get
+  do evalState <- get
+     let storeEnv = store evalState
      ref <- liftIO $ newIORef val
      case Map.lookup name storeEnv of
-       Nothing  -> put $ Map.insert name ref storeEnv
+       Nothing  -> put $ evalState {store = Map.insert name ref storeEnv}
        Just _   -> pos <!!> alreadyBound name
 
 unbindVar :: Ident -> Eval ()
-unbindVar = modify . Map.delete . ident
+unbindVar i = 
+  do evalState <- get
+     let storeEnv = store evalState
+     put $ evalState {store = Map.delete (ident i) storeEnv}
 
 -- Set the value of a variable (modifying the reference)
 setVar :: Ident -> Value -> Eval ()
@@ -181,12 +225,14 @@ setVar id val =
      liftIO $ writeIORef ref val
 
 
+-- Reader
+
 data EvalEnv = EE { evalOptions :: EvalOptions
                   , procEnv :: ProcEnv
-                  , aliases :: AliasSet }
+                  , aliases :: AliasSet}
 
-data EvalOptions = EvalOptions { modInt :: Bool, runReverse :: Bool }
-defaultOptions   = EvalOptions { modInt = False, runReverse = False }
+data EvalOptions = EvalOptions { modInt :: Bool, runReverse :: Bool, runDebugger :: Bool}
+defaultOptions   = EvalOptions { modInt = False, runReverse = False, runDebugger = False }
 
 type ProcEnv = Map.Map String Proc
 
@@ -221,16 +267,20 @@ getProc (Ident funName pos) =
        Just proc -> return proc
        Nothing   -> pos <!!> undefProc funName
 
+isDebuggerRunning :: Eval Bool
+isDebuggerRunning =
+  do env <- ask
+     return $ runDebugger $ evalOptions env
 
 --
 -- Evaluation
 --
 
-newtype Eval a = E { runE :: StateT Store (ReaderT EvalEnv (ErrorT JanaError IO)) a }
-               deriving (Applicative, Functor, Monad, MonadIO, MonadError JanaError, MonadReader EvalEnv, MonadState Store)
+newtype Eval a = E { runE :: StateT EvalState (ReaderT EvalEnv (ErrorT JanaError IO)) a }
+               deriving (Applicative, Functor, Monad, MonadIO, MonadError JanaError, MonadReader EvalEnv, MonadState EvalState)
 
-runEval :: Eval a -> Store -> EvalEnv -> IO (Either JanaError (a, Store))
-runEval eval store procs = runErrorT (runReaderT (runStateT (runE eval) store) procs)
+runEval :: Eval a -> EvalState -> EvalEnv -> IO (Either JanaError (a, EvalState))
+runEval eval evalState procs = runErrorT (runReaderT (runStateT (runE eval) evalState) procs)
 
 throwJanaError :: SourcePos -> Message -> Eval a
 throwJanaError pos msg = throwError $ newErrorMessage pos msg
