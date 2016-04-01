@@ -1,6 +1,6 @@
 module Jana.ErrorMessages where
 
-import Control.Monad.Error
+import Control.Monad.Except
 import Text.Printf
 import Data.List (intercalate)
 
