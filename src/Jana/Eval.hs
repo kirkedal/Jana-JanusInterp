@@ -271,6 +271,7 @@ breakStmt stmt =
     isBreak <- checkForBreak $ stmtPos stmt
     when (debugging && isBreak) $ 
       (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine $ stmtPos stmt) ++ "] ") >> makeBreak
+
     evalStmt stmt
 
 makeBreak :: Eval ()
@@ -309,7 +310,7 @@ parseDBCommand str          = (liftIO $ putStrLn errorTxt) >> makeBreak
     errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
 
 dbUsage = "Usage of the jana debugger\n\
-        \NOTICE: all breakpoints will be added at the beginning of a line\n\
+        \IMPORTANT: all breakpoints will be added at the beginning of a line and only on statements.\n\
         \options:\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
         \  c[ontinue]   continues execution to next breakpoint or the end\n\
