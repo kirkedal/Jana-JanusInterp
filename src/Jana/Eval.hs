@@ -30,6 +30,8 @@ import Jana.Parser (parseExprString, parseStmtsString)
 import Jana.Printf
 import Jana.Debug
 
+import Debug.Trace
+
 inArgument :: String -> String -> Eval a -> Eval a
 inArgument funid argid monad = catchError monad $
   throwError . addErrorMessage (InArgument funid argid)
@@ -269,7 +271,38 @@ assignLval modOp (Lookup id idxExpr) expr pos =
   where exprPos = getExprPos expr
 
 evalStmts :: [Stmt] -> Eval ()
-evalStmts = mapM_ (\stmt -> inStatement stmt $ evalStmt stmt)
+-- evalStmts =
+  -- mapM_ (\stmt -> inStatement stmt $ evalStmtExe stmt)
+evalStmts            []  = return ()
+evalStmts s@(stmt:stmts) = 
+  whenForwardExecutionElse 
+    (evalStmtFwd stmt >> 
+      whenForwardExecutionElse 
+        (evalStmts stmts >> whenBackwardExecution (evalStmts s))
+        (whenBackwardExecution (when (isDebug stmt) $ evalStmts s)))
+    (evalStmtBck stmt >> whenForwardExecution (evalStmts s))
+  where 
+    isDebug (Debug _) = True
+    isDebug         _ = False
+
+evalStmtBck :: Stmt -> Eval ()
+evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+  where
+    debug (Debug _) = " in debug stmt"
+    debug _         = " in normal stmt"
+evalStmtBck stmt =
+  flipExecution >> (inStatement invStmt $ evalStmt invStmt) >> flipExecution
+  where
+    invStmt = invertStmt Locally stmt
+
+evalStmtFwd :: Stmt -> Eval ()
+evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+  where
+    debug (Debug _) = " in debug stmt"
+    debug _         = " in normal stmt"
+evalStmtFwd stmt =
+  (inStatement stmt $ evalStmt stmt)
+
 
 makeBreak :: Eval ()
 makeBreak =
@@ -297,8 +330,8 @@ parseDBCommand ("p":var)    = mapM printVar var >> makeBreak
      do val <- getVar $ Ident var $ newPos "" 0 0
         liftIO $ putStrLn $ printVdecl var val 
 parseDBCommand ("print":v)  = parseDBCommand ("p":v)
-parseDBCommand ["r"]        = executeBackward
-parseDBCommand ["reverse"] = parseDBCommand ["r"]
+parseDBCommand ["r"]        = setSkipNextBreak >> executeBackward
+parseDBCommand ["reverse"]  = parseDBCommand ["r"]
 parseDBCommand ["s"]        = 
   do env <- get
      liftIO $ showStore env >>= putStrLn
@@ -312,11 +345,11 @@ dbUsage = "Usage of the jana debugger\n\
         \IMPORTANT: all breakpoints will be added at the beginning of a line and only on statements.\n\
         \options:\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
-        \  c[ontinue]   continues execution to next breakpoint or the end\n\
+        \  c[ontinue]   continues execution to next breakpoint in current direction\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
         \  h[elp]       this menu\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
-        \  r[everse]    reverse execution to precious breakpoint\n\
+        \  r[everse]    reverse execution direction\n\
         \  s[tore]      prints entire store"
 
 
@@ -324,17 +357,20 @@ evalStmt :: Stmt -> Eval ()
 evalStmt (Debug pos) = 
   do 
     isBreak <- checkForBreak pos
-    when isBreak $ 
-      (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak
+    exeDir <- isForwardExecution
+    dirText <- if exeDir then (return "FWD") else (return "BCK")
+    checkSkipBreak 
+      (when isBreak $ 
+        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ " (" ++ dirText ++ ")] ") >> makeBreak)
 
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
 evalStmt (If e1 s1 s2 e2 _) =
   do val1 <- unpackBool (getExprPos e1) =<< evalModularExpr e1
      if val1
        then do evalStmts s1
-               assertTrue e2
+               whenForwardExecutionElse (assertTrue e2) (assertTrue e1)
        else do evalStmts s2
-               assertFalse e2
+               whenForwardExecutionElse (assertFalse e2) (assertFalse e1)
 evalStmt (From e1 s1 s2 e2 _) =
   do assertTrue e1
      evalStmts s1

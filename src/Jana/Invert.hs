@@ -42,4 +42,5 @@ invertStmt _ stmt@(Swap{}) = stmt
 invertStmt _ stmt@(Prints{}) = stmt
 invertStmt _ stmt@(Skip{}) = stmt
 invertStmt _ stmt@(Assert{}) = stmt
+invertStmt _ stmt@(Debug{}) = stmt
 

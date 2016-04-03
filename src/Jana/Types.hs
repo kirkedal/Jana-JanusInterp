@@ -11,6 +11,7 @@ module Jana.Types (
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
     Eval, runEval, (<!!>),
     BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, doWhenDebugging,
+    checkSkipBreak, setSkipNextBreak,
     executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, isForwardExecution, whenForwardExecutionElse, 
     ) where
 
@@ -137,9 +138,21 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
 
 data EvalState = ES { breakPoints :: BreakPoints
                     , forwardExecution :: Bool
+                    , skipNextBreak :: Bool
                     , store :: Store}
 
 -- Break points
+
+setSkipNextBreak :: Eval ()
+setSkipNextBreak =
+  modify $ \x -> x {skipNextBreak = True}
+
+checkSkipBreak :: Eval () -> Eval ()
+checkSkipBreak op = 
+  do env <- get
+     if (skipNextBreak env) 
+       then modify $ \x -> x {skipNextBreak = False}
+       else op
 
 type BreakPoints = Set.Set Line
 
@@ -229,7 +242,7 @@ showStore s =
         (mapM (\(name, ref) -> liftM (printVdecl name) (readIORef ref))
               (Map.toList (store s)))
 
-emptyStore = ES {breakPoints = Set.empty, forwardExecution = True, store = Map.empty}
+emptyStore = ES {breakPoints = Set.empty, forwardExecution = True, skipNextBreak = False, store = Map.empty}
 
 storeFromList :: [(String, IORef Value)] -> Store
 storeFromList = Map.fromList
