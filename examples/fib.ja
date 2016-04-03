@@ -27,6 +27,9 @@ procedure main()
     int x1
     int x2
     int n
+    n += 1
+    n += 2
+    n += 3
     n += 4
     call fib(x1, x2, n)
     printf("%d %d %d\n", n, x1, x2)

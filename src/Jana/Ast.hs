@@ -55,19 +55,20 @@ data BinOp
 
 -- Statement
 data Stmt
-    = Assign   ModOp Lval Expr SourcePos
-    | If       Expr [Stmt] [Stmt] Expr SourcePos
-    | From     Expr [Stmt] [Stmt] Expr SourcePos
-    | Push     Ident Ident SourcePos
-    | Pop      Ident Ident SourcePos
-    | Local    LocalDecl [Stmt] LocalDecl SourcePos
-    | Call     Ident [Ident] SourcePos
-    | Uncall   Ident [Ident] SourcePos
+    = Assign    ModOp Lval Expr SourcePos
+    | If        Expr [Stmt] [Stmt] Expr SourcePos
+    | From      Expr [Stmt] [Stmt] Expr SourcePos
+    | Push      Ident Ident SourcePos
+    | Pop       Ident Ident SourcePos
+    | Local     LocalDecl [Stmt] LocalDecl SourcePos
+    | Call      Ident [Ident] SourcePos
+    | Uncall    Ident [Ident] SourcePos
     | UserError String SourcePos
-    | Swap     Lval Lval SourcePos
-    | Prints   Prints SourcePos
-    | Skip     SourcePos
-    | Assert   Expr SourcePos
+    | Swap      Lval Lval SourcePos
+    | Prints    Prints SourcePos
+    | Skip      SourcePos
+    | Assert    Expr SourcePos
+    | Debug     SourcePos
     deriving (Eq)
 
 -- Local Declaration
@@ -137,3 +138,21 @@ instance Identifiable ProcMain where
 
 instance Identifiable Proc where
   ident proc = ident $ procname proc
+
+
+stmtPos :: Stmt -> SourcePos
+stmtPos (Assign    _ _ _   p) = p
+stmtPos (If        _ _ _ _ p) = p
+stmtPos (From      _ _ _ _ p) = p
+stmtPos (Push      _ _     p) = p
+stmtPos (Pop       _ _     p) = p
+stmtPos (Local     _ _ _   p) = p
+stmtPos (Call      _ _     p) = p
+stmtPos (Uncall    _ _     p) = p
+stmtPos (UserError _       p) = p
+stmtPos (Swap      _ _     p) = p
+stmtPos (Prints    _       p) = p
+stmtPos (Skip              p) = p
+stmtPos (Assert    _       p) = p
+stmtPos (Debug             p) = p
+

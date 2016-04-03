@@ -10,7 +10,8 @@ module Jana.Types (
     EvalOptions(..), defaultOptions,
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
     Eval, runEval, (<!!>),
-    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging
+    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, doWhenDebugging,
+    executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, isForwardExecution, whenForwardExecutionElse, 
     ) where
 
 import Prelude hiding (GT, LT, EQ)
@@ -135,6 +136,7 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
 --
 
 data EvalState = ES { breakPoints :: BreakPoints
+                    , forwardExecution :: Bool
                     , store :: Store}
 
 -- Break points
@@ -157,6 +159,50 @@ removeBreakPoint l =
 addBreakPoint :: Line -> Eval ()
 addBreakPoint l = 
   modify $ \x -> x {breakPoints = Set.insert l (breakPoints x)}
+
+executeForward :: Eval ()
+executeForward =
+  modify $ \x -> x {forwardExecution = True}
+
+executeBackward :: Eval ()
+executeBackward =
+  modify $ \x -> x {forwardExecution = False}
+
+isForwardExecution :: Eval Bool
+isForwardExecution = 
+  do env <- get
+     return $ forwardExecution env
+
+flipExecution :: Eval ()
+flipExecution =
+  modify $ \x -> x {forwardExecution = not (forwardExecution x)}
+
+doWhen :: Monad m => Bool -> a -> (a -> m a) -> m a
+doWhen b a f =
+  if b
+    then return a
+    else f a
+
+doWhenForwardExecution :: a -> (a -> Eval a) -> Eval a
+doWhenForwardExecution a f =
+  do env <- get
+     doWhen (forwardExecution env) a f
+
+whenForwardExecution :: Eval () -> Eval ()
+whenForwardExecution f =
+  do env <- get
+     when (forwardExecution env) f
+
+whenForwardExecutionElse :: Eval () -> Eval () -> Eval ()
+whenForwardExecutionElse f e =
+  do env <- get
+     if forwardExecution env
+       then f
+       else e
+whenBackwardExecution :: Eval () -> Eval ()
+whenBackwardExecution f =
+  do env <- get
+     unless (forwardExecution env) f
 
 
 -- Store
@@ -183,7 +229,7 @@ showStore s =
         (mapM (\(name, ref) -> liftM (printVdecl name) (readIORef ref))
               (Map.toList (store s)))
 
-emptyStore = ES {breakPoints = Set.empty, store = Map.empty}
+emptyStore = ES {breakPoints = Set.empty, forwardExecution = True, store = Map.empty}
 
 storeFromList :: [(String, IORef Value)] -> Store
 storeFromList = Map.fromList
@@ -271,6 +317,12 @@ isDebuggerRunning :: Eval Bool
 isDebuggerRunning =
   do env <- ask
      return $ runDebugger $ evalOptions env
+
+doWhenDebugging :: a -> (a -> Eval a) -> Eval a
+doWhenDebugging a op =
+  do db <- isDebuggerRunning
+     doWhen db a op
+
 
 whenDebugging :: Eval () -> Eval ()
 whenDebugging op =

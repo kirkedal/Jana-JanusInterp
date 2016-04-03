@@ -28,6 +28,7 @@ import Jana.Error
 import Jana.ErrorMessages
 import Jana.Parser (parseExprString, parseStmtsString)
 import Jana.Printf
+import Jana.Debug
 
 inArgument :: String -> String -> Eval a -> Eval a
 inArgument funid argid monad = catchError monad $
@@ -129,8 +130,22 @@ getExprPos (Size _ pos)    = pos
 getExprPos (Nil pos)       = pos
 
 
+
 runProgram :: String -> Program -> EvalOptions -> IO ()
-runProgram _ (Program [main] procs) evalOptions =
+runProgram _ p@(Program [main] procs) evalOptions =
+  runProgramAfterDBcheck checkDB evalOptions
+  where
+    checkDB =
+      if runDebugger evalOptions
+        then injectDBProgram p
+        else p 
+runProgram filename (Program [] _) _ =
+  print (newFileError filename noMainProc) >> exitWith (ExitFailure 1)
+runProgram filename (Program _ _) _ =
+  print (newFileError filename multipleMainProcs) >> exitWith (ExitFailure 1)
+
+runProgramAfterDBcheck :: Program -> EvalOptions -> IO ()
+runProgramAfterDBcheck (Program [main] procs) evalOptions =
   case procEnvFromList procs of
     Left err -> print err
     Right procEnv ->
@@ -141,11 +156,6 @@ runProgram _ (Program [main] procs) evalOptions =
             case runRes of
               Right (_, s) -> showStore s >>= putStrLn
               Left err     -> print err >> exitWith (ExitFailure 1)
-runProgram filename (Program [] _) _ =
-  print (newFileError filename noMainProc) >> exitWith (ExitFailure 1)
-runProgram filename (Program _ _) _ =
-  print (newFileError filename multipleMainProcs) >> exitWith (ExitFailure 1)
-
 
 ---- Array functions
 -- Clean a bit up here
@@ -188,8 +198,7 @@ evalAliasSize pos _ _ _ = pos <!!> arraySize
 evalMain :: ProcMain -> Eval ()
 evalMain proc@(ProcMain vdecls body pos) =
   do mapM_ initBinding vdecls
-     whenDebugging $ 
-       (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.") >> makeBreak
+     whenDebugging ((liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.") >> makeBreak)
      evalStmts body
   where 
     initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
@@ -259,19 +268,8 @@ assignLval modOp (Lookup id idxExpr) expr pos =
      setVar id $ JArray sIdx arrUpd
   where exprPos = getExprPos expr
 
-evalStmts ::[Stmt] -> Eval ()
-evalStmts = mapM_ (\stmt -> inStatement stmt $ breakStmt stmt)
-
-
-              
-breakStmt :: Stmt -> Eval ()
-breakStmt stmt = 
-  do 
-    debugging <- isDebuggerRunning
-    isBreak <- checkForBreak $ stmtPos stmt
-    when (debugging && isBreak) $ 
-      (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine $ stmtPos stmt) ++ "] ") >> makeBreak
-    evalStmt stmt
+evalStmts :: [Stmt] -> Eval ()
+evalStmts = mapM_ (\stmt -> inStatement stmt $ evalStmt stmt)
 
 makeBreak :: Eval ()
 makeBreak =
@@ -287,7 +285,7 @@ makeBreak =
 parseDBCommand :: [String] -> Eval ()
 parseDBCommand ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak
 parseDBCommand ("add":n)    = parseDBCommand ("a":n)
-parseDBCommand ["c"]        = return ()
+parseDBCommand ["c"]        = executeForward
 parseDBCommand ["continue"] = parseDBCommand ["c"]
 parseDBCommand ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak
 parseDBCommand ("delete":n) = parseDBCommand ("d":n)
@@ -299,6 +297,8 @@ parseDBCommand ("p":var)    = mapM printVar var >> makeBreak
      do val <- getVar $ Ident var $ newPos "" 0 0
         liftIO $ putStrLn $ printVdecl var val 
 parseDBCommand ("print":v)  = parseDBCommand ("p":v)
+parseDBCommand ["r"]        = executeBackward
+parseDBCommand ["reverse"] = parseDBCommand ["r"]
 parseDBCommand ["s"]        = 
   do env <- get
      liftIO $ showStore env >>= putStrLn
@@ -313,13 +313,20 @@ dbUsage = "Usage of the jana debugger\n\
         \options:\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
         \  c[ontinue]   continues execution to next breakpoint or the end\n\
+        \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
         \  h[elp]       this menu\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
-        \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
+        \  r[everse]    reverse execution to precious breakpoint\n\
         \  s[tore]      prints entire store"
 
 
 evalStmt :: Stmt -> Eval ()
+evalStmt (Debug pos) = 
+  do 
+    isBreak <- checkForBreak pos
+    when isBreak $ 
+      (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak
+
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
 evalStmt (If e1 s1 s2 e2 _) =
   do val1 <- unpackBool (getExprPos e1) =<< evalModularExpr e1
@@ -444,22 +451,6 @@ evalStmt (Prints (Show vars) pos) =
         showVar var = liftM (printVdecl (ident var)) (getVar var)
 evalStmt (Skip _) = return ()
 evalStmt (Assert e pos) = assertTrue e
-
-stmtPos :: Stmt -> SourcePos
-stmtPos (Assign    _ _ _   p) = p
-stmtPos (If        _ _ _ _ p) = p
-stmtPos (From      _ _ _ _ p) = p
-stmtPos (Push      _ _     p) = p
-stmtPos (Pop       _ _     p) = p
-stmtPos (Local     _ _ _   p) = p
-stmtPos (Call      _ _     p) = p
-stmtPos (Uncall    _ _     p) = p
-stmtPos (UserError _       p) = p
-stmtPos (Swap      _ _     p) = p
-stmtPos (Prints    _       p) = p
-stmtPos (Skip              p) = p
-stmtPos (Assert    _       p) = p
-
 
 evalLval :: Maybe Lval -> Lval -> Eval Value
 evalLval lv (Var id) = checkLvalAlias lv (Var id) >> getVar id
