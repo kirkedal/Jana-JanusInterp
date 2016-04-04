@@ -321,6 +321,8 @@ parseDBCommand ["c"]        = executeForward
 parseDBCommand ["continue"] = parseDBCommand ["c"]
 parseDBCommand ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak
 parseDBCommand ("delete":n) = parseDBCommand ("d":n)
+parseDBCommand ["e"]        = liftIO $ exitWith $ ExitSuccess
+parseDBCommand ["exit"]     = parseDBCommand ["e"]
 parseDBCommand ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak
 parseDBCommand ["help"]     = parseDBCommand ["h"]
 parseDBCommand ("p":var)    = mapM printVar var >> makeBreak
@@ -346,6 +348,7 @@ dbUsage = "Usage of the jana debugger\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
         \  c[ontinue]   continues execution to next breakpoint in current direction\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
+        \  e[xit]       exit the debugger (end termination\n\
         \  h[elp]       this menu\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
         \  r[everse]    reverse execution direction\n\
