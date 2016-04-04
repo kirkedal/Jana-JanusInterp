@@ -70,7 +70,12 @@ assert :: Bool -> Expr -> Eval ()
 assert bool expr =
   do val1 <- unpackBool (getExprPos expr) =<< evalModularExpr expr
      unless (val1 == bool) $
-       getExprPos expr <!!> assertionFail ("should be " ++ map toLower (show bool))
+       whenDebuggingElse
+         ((liftIO $ putStrLn $ show msg) >> (liftIO $ putStrLn $ "[Break: ERROR]") >> makeBreak pos)
+         (pos <!!> msg)
+  where 
+    msg = assertionFail ("should be " ++ map toLower (show bool))
+    pos = getExprPos expr
 
 assertTrue = assert True
 assertFalse = assert False
@@ -303,9 +308,9 @@ evalStmtFwd stmt =
   (inStatement stmt $ evalStmt stmt)
 
 
-makeBreak :: Eval ()
-makeBreak =
-  whenDebugging ((parseDBCommand . splitArgs) =<< (liftIO $ getLine))
+makeBreak :: SourcePos -> Eval ()
+makeBreak pos =
+  whenDebugging (((parseDBCommand pos) . splitArgs) =<< (liftIO $ getLine))
   where 
     splitArgs s = 
       case dropWhile isSpace s of
@@ -314,31 +319,33 @@ makeBreak =
           where (w, s'') = break isSpace s'
 
 
-parseDBCommand :: [String] -> Eval ()
-parseDBCommand ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak
-parseDBCommand ("add":n)    = parseDBCommand ("a":n)
-parseDBCommand ["c"]        = executeForward
-parseDBCommand ["continue"] = parseDBCommand ["c"]
-parseDBCommand ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak
-parseDBCommand ("delete":n) = parseDBCommand ("d":n)
-parseDBCommand ["e"]        = liftIO $ exitWith $ ExitSuccess
-parseDBCommand ["exit"]     = parseDBCommand ["e"]
-parseDBCommand ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak
-parseDBCommand ["help"]     = parseDBCommand ["h"]
-parseDBCommand ("p":var)    = mapM printVar var >> makeBreak
+parseDBCommand :: SourcePos -> [String] -> Eval ()
+parseDBCommand pos ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak pos
+parseDBCommand pos ("add":n)    = parseDBCommand pos ("a":n)
+parseDBCommand pos ["c"]        = executeForward
+parseDBCommand pos ["continue"] = parseDBCommand pos ["c"]
+parseDBCommand pos ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak pos
+parseDBCommand pos ("delete":n) = parseDBCommand pos ("d":n)
+parseDBCommand pos ["e"]        = liftIO $ exitWith $ ExitSuccess
+parseDBCommand pos ["exit"]     = parseDBCommand pos ["e"]
+parseDBCommand pos ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak pos
+parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
+parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
+parseDBCommand pos ["line"]     = parseDBCommand pos ["l"]
+parseDBCommand pos ("p":var)    = mapM printVar var >> makeBreak pos
   where 
     printVar var =
      do val <- getVar $ Ident var $ newPos "" 0 0
         liftIO $ putStrLn $ printVdecl var val 
-parseDBCommand ("print":v)  = parseDBCommand ("p":v)
-parseDBCommand ["r"]        = setSkipNextBreak >> executeBackward
-parseDBCommand ["reverse"]  = parseDBCommand ["r"]
-parseDBCommand ["s"]        = 
+parseDBCommand pos ("print":v)  = parseDBCommand pos ("p":v)
+parseDBCommand pos ["r"]        = setSkipNextBreak >> executeBackward
+parseDBCommand pos ["reverse"]  = parseDBCommand pos ["r"]
+parseDBCommand pos ["s"]        = 
   do env <- get
      liftIO $ showStore env >>= putStrLn
-     makeBreak
-parseDBCommand ["store"]    = parseDBCommand ["s"]
-parseDBCommand str          = (liftIO $ putStrLn errorTxt) >> makeBreak
+     makeBreak pos
+parseDBCommand pos ["store"]    = parseDBCommand pos ["s"]
+parseDBCommand pos str          = (liftIO $ putStrLn errorTxt) >> makeBreak pos
   where 
     errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
 
@@ -350,6 +357,7 @@ dbUsage = "Usage of the jana debugger\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
         \  e[xit]       exit the debugger (end termination\n\
         \  h[elp]       this menu\n\
+        \  l[ine]       print current line\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
         \  r[everse]    reverse execution direction\n\
         \  s[tore]      prints entire store"
@@ -361,9 +369,9 @@ evalStmt (Debug Beginning pos) =
     whenFirstBreak
       (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.")
       (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ " )]")
-    >> makeBreak
+    >> makeBreak pos
 evalStmt (Debug End pos) = 
-  checkSkipBreak $ (liftIO $ putStrLn $ "[Break at END]") >> makeBreak
+  checkSkipBreak $ (liftIO $ putStrLn $ "[Break at END]") >> makeBreak pos
 evalStmt (Debug Normal pos) = 
   do 
     isBreak <- checkForBreak pos
@@ -372,7 +380,7 @@ evalStmt (Debug Normal pos) =
     checkSkipBreak 
       (when isBreak $ 
         -- (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ " (" ++ dirText ++ ")] ") >> makeBreak)
-        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak)
+        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak pos)
 
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
 evalStmt (If e1 s1 s2 e2 _) =

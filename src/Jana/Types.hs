@@ -10,7 +10,7 @@ module Jana.Types (
     EvalOptions(..), defaultOptions,
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
     Eval, runEval, (<!!>),
-    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, doWhenDebugging,
+    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, whenDebuggingElse, doWhenDebugging,
     checkSkipBreak, setSkipNextBreak, whenFirstBreak,
     executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, isForwardExecution, whenForwardExecutionElse, 
     ) where
@@ -353,6 +353,13 @@ whenDebugging :: Eval () -> Eval ()
 whenDebugging op =
   do db <- isDebuggerRunning
      when db op
+
+whenDebuggingElse :: Eval () -> Eval () -> Eval ()
+whenDebuggingElse op1 op2 =
+  do db <- isDebuggerRunning
+     if db 
+       then op1
+       else op2
 
 --
 -- Evaluation
