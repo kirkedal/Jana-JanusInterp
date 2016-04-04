@@ -200,7 +200,6 @@ evalAliasSize pos _ _ _ = pos <!!> arraySize
 evalMain :: ProcMain -> Eval ()
 evalMain proc@(ProcMain vdecls body pos) =
   do mapM_ initBinding vdecls
-     whenDebugging ((liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.") >> makeBreak)
      evalStmts body
   where 
     initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
@@ -282,24 +281,24 @@ evalStmts s@(stmt:stmts) =
         (whenBackwardExecution (when (isDebug stmt) $ evalStmts s)))
     (evalStmtBck stmt >> whenForwardExecution (evalStmts s))
   where 
-    isDebug (Debug _) = True
-    isDebug         _ = False
+    isDebug (Debug _ _ ) = True
+    isDebug         _    = False
 
 evalStmtBck :: Stmt -> Eval ()
-evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
-  where
-    debug (Debug _) = " in debug stmt"
-    debug _         = " in normal stmt"
+-- evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+--   where
+--     debug (Debug _ _ ) = " in debug stmt"
+--     debug _            = " in normal stmt"
 evalStmtBck stmt =
   flipExecution >> (inStatement invStmt $ evalStmt invStmt) >> flipExecution
   where
     invStmt = invertStmt Locally stmt
 
 evalStmtFwd :: Stmt -> Eval ()
-evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
-  where
-    debug (Debug _) = " in debug stmt"
-    debug _         = " in normal stmt"
+-- evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+--   where
+--     debug (Debug _ _) = " in debug stmt"
+--     debug _           = " in normal stmt"
 evalStmtFwd stmt =
   (inStatement stmt $ evalStmt stmt)
 
@@ -354,14 +353,23 @@ dbUsage = "Usage of the jana debugger\n\
 
 
 evalStmt :: Stmt -> Eval ()
-evalStmt (Debug pos) = 
+evalStmt (Debug Beginning pos) =  
+  checkSkipBreak $
+    whenFirstBreak
+      (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.")
+      (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ " )]")
+    >> makeBreak
+evalStmt (Debug End pos) = 
+  checkSkipBreak $ (liftIO $ putStrLn $ "[Break at END]") >> makeBreak
+evalStmt (Debug Normal pos) = 
   do 
     isBreak <- checkForBreak pos
-    exeDir <- isForwardExecution
-    dirText <- if exeDir then (return "FWD") else (return "BCK")
+    -- exeDir <- isForwardExecution
+    -- dirText <- if exeDir then (return "FWD") else (return "BCK")
     checkSkipBreak 
       (when isBreak $ 
-        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ " (" ++ dirText ++ ")] ") >> makeBreak)
+        -- (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ " (" ++ dirText ++ ")] ") >> makeBreak)
+        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak)
 
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
 evalStmt (If e1 s1 s2 e2 _) =

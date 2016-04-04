@@ -53,6 +53,12 @@ data BinOp
     | GT | LT | EQ | NEQ | GE | LE    -- Relational (> < = != >= <=)
     deriving (Eq, Ord, Show)
 
+data DebugType 
+    = Normal
+    | Beginning
+    | End
+    deriving (Eq)
+
 -- Statement
 data Stmt
     = Assign    ModOp Lval Expr SourcePos
@@ -68,7 +74,7 @@ data Stmt
     | Prints    Prints SourcePos
     | Skip      SourcePos
     | Assert    Expr SourcePos
-    | Debug     SourcePos
+    | Debug     DebugType SourcePos
     deriving (Eq)
 
 -- Local Declaration
@@ -154,5 +160,5 @@ stmtPos (Swap      _ _     p) = p
 stmtPos (Prints    _       p) = p
 stmtPos (Skip              p) = p
 stmtPos (Assert    _       p) = p
-stmtPos (Debug             p) = p
+stmtPos (Debug     _       p) = p
 
