@@ -306,23 +306,22 @@ evalStmts_ s_come s_done =
     bck (s:sd) = evalStmtBck s >> whenForwardExecutionElse (evalStmts_ (s_come) s_done) (evalStmts_ (s:s_come) sd)
  
 evalStmtBck :: Stmt -> Eval ()
-evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
-  where
-    debug (Debug _ _ ) = " in debug stmt"
-    debug _            = " in " ++ show stmt
+-- evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+--   where
+--     debug (Debug _ _ ) = " in debug stmt"
+--     debug _            = " in " ++ show stmt
 evalStmtBck stmt =
   flipExecution >> (inStatement invStmt $ evalStmt invStmt) >> flipExecution
   where
     invStmt = invertStmt Locally stmt
 
 evalStmtFwd :: Stmt -> Eval ()
-evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
-  where
-    debug (Debug _ _) = " in debug stmt"
-    debug _           = " in " ++ show stmt
+-- evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+--   where
+--     debug (Debug _ _) = " in debug stmt"
+--     debug _           = " in " ++ show stmt
 evalStmtFwd stmt =
   (inStatement stmt $ evalStmt stmt)
-
 
 makeBreak :: SourcePos -> Eval ()
 makeBreak pos =
@@ -333,7 +332,6 @@ makeBreak pos =
         "" -> []
         s' -> w : splitArgs s''
           where (w, s'') = break isSpace s'
-
 
 parseDBCommand :: SourcePos -> [String] -> Eval ()
 parseDBCommand pos ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak pos
@@ -388,7 +386,7 @@ evalStmt (Debug Beginning pos) =
       (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ ")]")
     >> makeBreak pos
 evalStmt (Debug End pos) = 
-  checkSkipBreak $ (liftIO $ putStrLn $ "[Break at END]") >> makeBreak pos
+  checkSkipBreak $ (liftIO $ putStrLn $ "[Break at END (_after_ line " ++ (show $ sourceLine pos) ++ ")]") >> makeBreak pos
 evalStmt (Debug Normal pos) = 
   do 
     isBreak <- checkForBreak pos
@@ -417,8 +415,7 @@ evalStmt (From e1 s1 s2 e2 pos) =
      --       unless val 
   where loop = do evalStmts s1
                   val <- unpackBool (getExprPos e2) =<< evalModularExpr e2
-                  whenForwardExecution (unless val (loopRec >> whenBackwardExecution 
-                    ((liftIO $ putStrLn "Back loop") >> assertFalse e2 >> evalStmts s1)))
+                  whenForwardExecution (unless val (loopRec >> whenBackwardExecution (assertFalse e2 >> evalStmts s1)))
         loopRec = do evalStmts s2
                      whenForwardExecution (assertFalse e1 >> loop >> whenBackwardExecution (assertFalse e1 >> evalStmts s2)) 
 
@@ -439,7 +436,7 @@ evalStmt (Local assign1 stmts assign2 _) =
   do checkIdentAndType assign1 assign2
      createBinding assign1
      evalStmts stmts
-     whenForwardExecution (assertBinding assign2) (assertBinding assign1)
+     whenForwardExecutionElse (assertBinding assign2) (assertBinding assign1)
   where createBinding (LocalVar typ id expr pos) =
           do val <- evalModularExpr expr
              checkType typ val
