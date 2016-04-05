@@ -43,6 +43,7 @@ data ModOp
 -- Unary operators
 data UnaryOp
     = Not
+    | FromLoop -- Hack for loops
     deriving (Eq, Ord)
 
 -- Binary operators

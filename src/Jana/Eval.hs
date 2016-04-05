@@ -275,35 +275,51 @@ assignLval modOp (Lookup id idxExpr) expr pos =
   where exprPos = getExprPos expr
 
 evalStmts :: [Stmt] -> Eval ()
--- evalStmts =
-  -- mapM_ (\stmt -> inStatement stmt $ evalStmtExe stmt)
-evalStmts            []  = return ()
-evalStmts s@(stmt:stmts) = 
-  whenForwardExecutionElse 
-    (evalStmtFwd stmt >> 
-      whenForwardExecutionElse 
-        (evalStmts stmts >> whenBackwardExecution (evalStmts s))
-        (whenBackwardExecution (when (isDebug stmt) $ evalStmts s)))
-    (evalStmtBck stmt >> whenForwardExecution (evalStmts s))
-  where 
-    isDebug (Debug _ _ ) = True
-    isDebug         _    = False
+evalStmts stmts =
+  whenForwardExecutionElse
+    (evalStmts_ stmts [])
+    (evalStmts_ [] (reverse stmts))
 
+-- -- evalStmts =
+--   -- mapM_ (\stmt -> inStatement stmt $ evalStmtExe stmt)
+-- evalStmts            []  = return ()
+-- evalStmts s@(stmt:stmts) = 
+--   whenForwardExecutionElse 
+--     (evalStmtFwd stmt >> 
+--       whenForwardExecutionElse 
+--         (evalStmts stmts >> whenBackwardExecution (evalStmts s))
+--         (whenBackwardExecution (whenDebug (isDebug stmt))))
+--     (evalStmtBck stmt >> whenForwardExecution (evalStmts s))
+--   where 
+--     isDebug (Debug _ _ ) = True
+--     isDebug         _    = False
+--     whenDebug True  = evalStmts s
+--     whenDebug False = liftIO $ putStrLn "Not taken Debug"
+
+evalStmts_ :: [Stmt] -> [Stmt] -> Eval ()
+evalStmts_ s_come s_done =
+  whenForwardExecutionElse (fwd s_come) (bck s_done)
+  where
+    fwd []     = return ()
+    fwd (s:sc) = evalStmtFwd s >> whenForwardExecutionElse (evalStmts_ sc (s:s_done)) (evalStmts_ s_come s_done)
+    bck []     = return ()
+    bck (s:sd) = evalStmtBck s >> whenForwardExecutionElse (evalStmts_ (s_come) s_done) (evalStmts_ (s:s_come) sd)
+ 
 evalStmtBck :: Stmt -> Eval ()
--- evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
---   where
---     debug (Debug _ _ ) = " in debug stmt"
---     debug _            = " in normal stmt"
+evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+  where
+    debug (Debug _ _ ) = " in debug stmt"
+    debug _            = " in " ++ show stmt
 evalStmtBck stmt =
   flipExecution >> (inStatement invStmt $ evalStmt invStmt) >> flipExecution
   where
     invStmt = invertStmt Locally stmt
 
 evalStmtFwd :: Stmt -> Eval ()
--- evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
---   where
---     debug (Debug _ _) = " in debug stmt"
---     debug _           = " in normal stmt"
+evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
+  where
+    debug (Debug _ _) = " in debug stmt"
+    debug _           = " in " ++ show stmt
 evalStmtFwd stmt =
   (inStatement stmt $ evalStmt stmt)
 
@@ -326,8 +342,6 @@ parseDBCommand pos ["c"]        = executeForward
 parseDBCommand pos ["continue"] = parseDBCommand pos ["c"]
 parseDBCommand pos ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak pos
 parseDBCommand pos ("delete":n) = parseDBCommand pos ("d":n)
-parseDBCommand pos ["e"]        = liftIO $ exitWith $ ExitSuccess
-parseDBCommand pos ["exit"]     = parseDBCommand pos ["e"]
 parseDBCommand pos ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak pos
 parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
 parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
@@ -345,6 +359,8 @@ parseDBCommand pos ["s"]        =
      liftIO $ showStore env >>= putStrLn
      makeBreak pos
 parseDBCommand pos ["store"]    = parseDBCommand pos ["s"]
+parseDBCommand pos ["q"]        = liftIO $ exitWith $ ExitSuccess
+parseDBCommand pos ["quit"]     = parseDBCommand pos ["q"]
 parseDBCommand pos str          = (liftIO $ putStrLn errorTxt) >> makeBreak pos
   where 
     errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
@@ -355,20 +371,21 @@ dbUsage = "Usage of the jana debugger\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
         \  c[ontinue]   continues execution to next breakpoint in current direction\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
-        \  e[xit]       exit the debugger (end termination\n\
         \  h[elp]       this menu\n\
         \  l[ine]       print current line\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
         \  r[everse]    reverse execution direction\n\
-        \  s[tore]      prints entire store"
+        \  s[tore]      prints entire store\n\
+        \  q[uit]       quit the debugger (end termination)"
 
 
 evalStmt :: Stmt -> Eval ()
+-- evalStmt stmt | trace ("EvalStmt at line" ++ (show $ sourceLine $ stmtPos stmt) ++ " doing " ++ (show stmt)) False = undefined
 evalStmt (Debug Beginning pos) =  
   checkSkipBreak $
     whenFirstBreak
       (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.")
-      (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ " )]")
+      (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ ")]")
     >> makeBreak pos
 evalStmt (Debug End pos) = 
   checkSkipBreak $ (liftIO $ putStrLn $ "[Break at END]") >> makeBreak pos
@@ -390,16 +407,21 @@ evalStmt (If e1 s1 s2 e2 _) =
                whenForwardExecutionElse (assertTrue e2) (assertTrue e1)
        else do evalStmts s2
                whenForwardExecutionElse (assertFalse e2) (assertFalse e1)
-evalStmt (From e1 s1 s2 e2 _) =
+evalStmt (From e1 s1 s2 e2 pos) =
   do assertTrue e1
-     evalStmts s1
      loop
-  where loop = do val <- unpackBool (getExprPos e2) =<< evalModularExpr e2
-                  unless val loopRec
+     -- whenBackwardExecution (assertTrue e1)
+     -- where 
+     --  loop = 
+     --    do val <- unpackBool (getExprPos e2) =<< evalModularExpr e2
+     --       unless val 
+  where loop = do evalStmts s1
+                  val <- unpackBool (getExprPos e2) =<< evalModularExpr e2
+                  whenForwardExecution (unless val (loopRec >> whenBackwardExecution 
+                    ((liftIO $ putStrLn "Back loop") >> assertFalse e2 >> evalStmts s1)))
         loopRec = do evalStmts s2
-                     assertFalse e1
-                     evalStmts s1
-                     loop
+                     whenForwardExecution (assertFalse e1 >> loop >> whenBackwardExecution (assertFalse e1 >> evalStmts s2)) 
+
 evalStmt (Push id1 id2 pos) =
   do head <- unpackInt pos   =<< getVar id1
      tail <- unpackStack pos =<< getVar id2
@@ -417,7 +439,7 @@ evalStmt (Local assign1 stmts assign2 _) =
   do checkIdentAndType assign1 assign2
      createBinding assign1
      evalStmts stmts
-     assertBinding assign2
+     whenForwardExecution (assertBinding assign2) (assertBinding assign1)
   where createBinding (LocalVar typ id expr pos) =
           do val <- evalModularExpr expr
              checkType typ val

@@ -164,6 +164,9 @@ formatStmt (Skip _) =
 formatStmt (Assert e _) =
   text "assert" <> parens (formatExpr e)
 
+formatStmt (Debug _ _) =
+  text ""
+
 
 formatStmtsAbbrv []         = empty
 formatStmtsAbbrv [If {}]    = text "..."
