@@ -69,10 +69,7 @@ unpackBool pos val = pos <!!> typeMismatch ["bool"] (showValueType val)
 assert :: Bool -> Expr -> Eval ()
 assert bool expr =
   do val1 <- unpackBool (getExprPos expr) =<< evalModularExpr expr
-     unless (val1 == bool) $
-       whenDebuggingElse
-         ((liftIO $ putStrLn $ show msg) >> (liftIO $ putStrLn $ "[Break: ERROR]") >> makeBreak pos)
-         (pos <!!> msg)
+     unless (val1 == bool) $ pos <!!> msg
   where 
     msg = assertionFail ("should be " ++ map toLower (show bool))
     pos = getExprPos expr
@@ -311,7 +308,7 @@ evalStmtBck :: Stmt -> Eval ()
 --     debug (Debug _ _ ) = " in debug stmt"
 --     debug _            = " in " ++ show stmt
 evalStmtBck stmt =
-  flipExecution >> (inStatement invStmt $ evalStmt invStmt) >> flipExecution
+  flipExecution >> (catchError (inStatement invStmt $ evalStmt invStmt) catchDebugError) >> flipExecution
   where
     invStmt = invertStmt Locally stmt
 
@@ -321,7 +318,7 @@ evalStmtFwd :: Stmt -> Eval ()
 --     debug (Debug _ _) = " in debug stmt"
 --     debug _           = " in " ++ show stmt
 evalStmtFwd stmt =
-  (inStatement stmt $ evalStmt stmt)
+  catchError (inStatement stmt $ evalStmt stmt) catchDebugError
 
 makeBreak :: SourcePos -> Eval ()
 makeBreak pos =
@@ -344,10 +341,10 @@ parseDBCommand pos ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak pos
 parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
 parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
 parseDBCommand pos ["line"]     = parseDBCommand pos ["l"]
-parseDBCommand pos ("p":var)    = mapM printVar var >> makeBreak pos
+parseDBCommand pos ("p":var)    = mapM (\x -> catchError (printVar x) catchDebugError) var >> makeBreak pos
   where 
     printVar var =
-     do val <- getVar $ Ident var $ newPos "" 0 0
+     do val <- (getVar $ Ident var pos)
         liftIO $ putStrLn $ printVdecl var val 
 parseDBCommand pos ("print":v)  = parseDBCommand pos ("p":v)
 parseDBCommand pos ["r"]        = setSkipNextBreak >> executeBackward
@@ -362,6 +359,14 @@ parseDBCommand pos ["quit"]     = parseDBCommand pos ["q"]
 parseDBCommand pos str          = (liftIO $ putStrLn errorTxt) >> makeBreak pos
   where 
     errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
+
+catchDebugError :: JanaError  -> Eval ()
+catchDebugError msg = 
+  whenDebugging 
+    (liftIO $ putStrLn $ "[Break: ERROR (line " ++ (show $ sourceLine $ errorPos msg) ++ ")]") >> 
+      (liftIO $ putStrLn $ show (errorMessages msg)) >> 
+      makeBreak (errorPos msg)
+
 
 dbUsage = "Usage of the jana debugger\n\
         \IMPORTANT: all breakpoints will be added at the beginning of a line and only on statements.\n\
