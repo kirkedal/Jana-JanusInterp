@@ -74,8 +74,8 @@ assert bool expr =
     msg = assertionFail ("should be " ++ map toLower (show bool))
     pos = getExprPos expr
 
-assertTrue = assert True
-assertFalse = assert False
+assertTrue  expr = catchError (assert True  expr) catchDebugError
+assertFalse expr = catchError (assert False expr) catchDebugError
 
 checkType :: Type -> Value -> Eval ()
 checkType (Int pos)   (JInt _)   = return ()
@@ -140,9 +140,9 @@ runProgram _ p@(Program [main] procs) evalOptions =
   runProgramAfterDBcheck checkDB evalOptions
   where
     checkDB =
-      if runDebugger evalOptions
-        then injectDBProgram p
-        else p 
+      if (runDebugger evalOptions) == DebugOff
+        then p
+        else injectDBProgram p 
 runProgram filename (Program [] _) _ =
   print (newFileError filename noMainProc) >> exitWith (ExitFailure 1)
 runProgram filename (Program _ _) _ =
@@ -277,22 +277,6 @@ evalStmts stmts =
     (evalStmts_ stmts [])
     (evalStmts_ [] (reverse stmts))
 
--- -- evalStmts =
---   -- mapM_ (\stmt -> inStatement stmt $ evalStmtExe stmt)
--- evalStmts            []  = return ()
--- evalStmts s@(stmt:stmts) = 
---   whenForwardExecutionElse 
---     (evalStmtFwd stmt >> 
---       whenForwardExecutionElse 
---         (evalStmts stmts >> whenBackwardExecution (evalStmts s))
---         (whenBackwardExecution (whenDebug (isDebug stmt))))
---     (evalStmtBck stmt >> whenForwardExecution (evalStmts s))
---   where 
---     isDebug (Debug _ _ ) = True
---     isDebug         _    = False
---     whenDebug True  = evalStmts s
---     whenDebug False = liftIO $ putStrLn "Not taken Debug"
-
 evalStmts_ :: [Stmt] -> [Stmt] -> Eval ()
 evalStmts_ s_come s_done =
   whenForwardExecutionElse (fwd s_come) (bck s_done)
@@ -334,11 +318,11 @@ parseDBCommand :: SourcePos -> [String] -> Eval ()
 parseDBCommand pos ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak pos
 parseDBCommand pos ("add":n)    = parseDBCommand pos ("a":n)
 parseDBCommand pos ["b"]        = executeBackward
-parseDBCommand pos ["backward"]  = parseDBCommand pos ["b"]
+parseDBCommand pos ["backward"] = parseDBCommand pos ["b"]
 parseDBCommand pos ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak pos
 parseDBCommand pos ("delete":n) = parseDBCommand pos ("d":n)
 parseDBCommand pos ["f"]        = executeForward
-parseDBCommand pos ["forward"] = parseDBCommand pos ["f"]
+parseDBCommand pos ["forward"]  = parseDBCommand pos ["f"]
 parseDBCommand pos ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak pos
 parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
 parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
@@ -379,50 +363,48 @@ dbUsage = "Usage of the jana debugger\n\
         \  l[ine]       print current line\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
         \  s[tore]      prints entire store\n\
-        \  q[uit]       quit the debugger (end termination)"
+        \  q[uit]       quit the debugger (ends termination)"
 
 
 evalStmt :: Stmt -> Eval ()
 -- evalStmt stmt | trace ("EvalStmt at line" ++ (show $ sourceLine $ stmtPos stmt) ++ " doing " ++ (show stmt)) False = undefined
 evalStmt (Debug Beginning pos) =  
-  checkSkipBreak $
-    whenFirstBreak
-      (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.")
-      (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ ")]")
-    >> makeBreak pos
+  do whenFullDebugging $ 
+       whenFirstBreak
+         (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.")
+         (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ ")]") >>
+        makeBreak pos
+     er <- isErrorDebugging
+     fw <- isUserForwardExecution
+     when (er && (not fw)) ((liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ ")]") >> makeBreak pos)
 evalStmt (Debug End pos) = 
-  checkSkipBreak $ (liftIO $ putStrLn $ "[Break at END (_after_ line " ++ (show $ sourceLine pos) ++ ")]") >> makeBreak pos
+  whenFullDebugging $ (liftIO $ putStrLn $ "[Break at END (_after_ line " ++ (show $ sourceLine pos) ++ ")]") >> makeBreak pos
 evalStmt (Debug Normal pos) = 
-  do 
-    isBreak <- checkForBreak pos
-    -- exeDir <- isForwardExecution
-    -- dirText <- if exeDir then (return "FWD") else (return "BCK")
-    checkSkipBreak 
-      (when isBreak $ 
-        -- (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ " (" ++ dirText ++ ")] ") >> makeBreak)
-        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak pos)
+  do isBreak <- checkForBreak pos
+     when isBreak $ 
+       (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak pos
 
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
 evalStmt (If e1 s1 s2 e2 _) =
   do val1 <- unpackBool (getExprPos e1) =<< evalModularExpr e1
      if val1
        then do evalStmts s1
-               whenForwardExecutionElse (assertTrue e2) (assertTrue e1)
+               whenForwardExecution  (assertTrue e2 >> whenBackwardExecution (evalStmts s1))
+               whenBackwardExecution (assertTrue e1)
        else do evalStmts s2
-               whenForwardExecutionElse (assertFalse e2) (assertFalse e1)
+               whenForwardExecution  (assertFalse e2 >> whenBackwardExecution (evalStmts s2))
+               whenBackwardExecution (assertFalse e1)
 evalStmt (From e1 s1 s2 e2 pos) =
   do assertTrue e1
-     loop
-     -- whenBackwardExecution (assertTrue e1)
-     -- where 
-     --  loop = 
-     --    do val <- unpackBool (getExprPos e2) =<< evalModularExpr e2
-     --       unless val 
+     whenForwardExecution loop
   where loop = do evalStmts s1
                   val <- unpackBool (getExprPos e2) =<< evalModularExpr e2
                   whenForwardExecution (unless val (loopRec >> whenBackwardExecution (assertFalse e2 >> evalStmts s1)))
         loopRec = do evalStmts s2
-                     whenForwardExecution (assertFalse e1 >> loop >> whenBackwardExecution (assertFalse e1 >> evalStmts s2)) 
+                     whenForwardExecution 
+                       (assertFalse e1 >> 
+                         whenForwardExecution (loop >> whenBackwardExecution (assertFalse e1)) >>
+                         whenBackwardExecution (evalStmts s2)) 
 
 evalStmt (Push id1 id2 pos) =
   do head <- unpackInt pos   =<< getVar id1

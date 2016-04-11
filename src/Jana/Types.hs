@@ -7,12 +7,14 @@ module Jana.Types (
     Store, printVdecl, showStore, emptyStore, storeFromList, putStore, getStore,
     getRef, getVar, getRefValue, bindVar, unbindVar, setVar,
     EvalEnv(..),
-    EvalOptions(..), defaultOptions,
+    EvalOptions(..), defaultOptions, DebugMode(..),
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
     Eval, runEval, (<!!>),
-    BreakPoints, checkLine, EvalState, checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, whenDebuggingElse, doWhenDebugging,
-    checkSkipBreak, setSkipNextBreak, whenFirstBreak,
-    executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, isForwardExecution, whenForwardExecutionElse, 
+    BreakPoints, checkLine, EvalState, 
+    checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, 
+    whenDebuggingElse, doWhenDebugging, whenFirstBreak, whenFullDebugging, isErrorDebugging,
+    executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, 
+    isForwardExecution, whenForwardExecutionElse, isUserForwardExecution,
     ) where
 
 import Prelude hiding (GT, LT, EQ)
@@ -139,22 +141,17 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
 data EvalState = ES { breakPoints :: BreakPoints
                     , forwardExecution :: Bool
                     , userForwardExecution :: Bool
-                    , skipNextBreak :: Bool
                     , firstDBbeginning :: Bool
                     , store :: Store}
 
+
+emptyStore = ES { breakPoints = Set.empty,
+                  userForwardExecution = True, 
+                  forwardExecution = True, 
+                  firstDBbeginning = True, 
+                  store = Map.empty}
+
 -- Break points
-
-setSkipNextBreak :: Eval ()
-setSkipNextBreak =
-  modify $ \x -> x {skipNextBreak = True}
-
-checkSkipBreak :: Eval () -> Eval ()
-checkSkipBreak op = 
-  do env <- get
-     if (skipNextBreak env) 
-       then modify $ \x -> x {skipNextBreak = False}
-       else op
 
 type BreakPoints = Set.Set Line
 
@@ -198,6 +195,11 @@ isForwardExecution :: Eval Bool
 isForwardExecution = 
   do env <- get
      return $ forwardExecution env
+
+isUserForwardExecution :: Eval Bool
+isUserForwardExecution = 
+  do env <- get
+     return $ userForwardExecution env
 
 flipExecution :: Eval ()
 flipExecution =
@@ -256,8 +258,6 @@ showStore s =
         (mapM (\(name, ref) -> liftM (printVdecl name) (readIORef ref))
               (Map.toList (store s)))
 
-emptyStore = ES {breakPoints = Set.empty, userForwardExecution = True, forwardExecution = True, skipNextBreak = False, firstDBbeginning = True, store = Map.empty}
-
 storeFromList :: [(String, IORef Value)] -> Store
 storeFromList = Map.fromList
 
@@ -304,8 +304,11 @@ data EvalEnv = EE { evalOptions :: EvalOptions
                   , procEnv :: ProcEnv
                   , aliases :: AliasSet}
 
-data EvalOptions = EvalOptions { modInt :: Bool, runReverse :: Bool, runDebugger :: Bool}
-defaultOptions   = EvalOptions { modInt = False, runReverse = False, runDebugger = False }
+data EvalOptions = EvalOptions { modInt :: Bool, runReverse :: Bool, runDebugger :: DebugMode}
+defaultOptions   = EvalOptions { modInt = False, runReverse = False, runDebugger = DebugOff }
+
+data DebugMode = DebugOff | DebugOn | DebugError
+  deriving (Eq)
 
 type ProcEnv = Map.Map String Proc
 
@@ -343,7 +346,26 @@ getProc (Ident funName pos) =
 isDebuggerRunning :: Eval Bool
 isDebuggerRunning =
   do env <- ask
-     return $ runDebugger $ evalOptions env
+     return $ db $ runDebugger $ evalOptions env
+  where
+    db DebugOff = False
+    db _ = True
+
+isErrorDebugging :: Eval Bool
+isErrorDebugging =
+  do env <- ask
+     return $ db $ runDebugger $ evalOptions env
+  where
+    db DebugError = True
+    db _ = False
+
+whenFullDebugging :: Eval () -> Eval ()
+whenFullDebugging op =
+  do env <- ask
+     when (db $ runDebugger $ evalOptions env) op
+  where
+    db DebugOn = True
+    db _ = False
 
 doWhenDebugging :: a -> (a -> Eval a) -> Eval a
 doWhenDebugging a op =

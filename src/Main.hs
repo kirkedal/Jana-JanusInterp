@@ -8,7 +8,7 @@ import Data.List
 -- import Jana.ParserBasic
 import Jana.Parser
 import Jana.Eval (runProgram)
-import Jana.Types (defaultOptions, EvalOptions(..))
+import Jana.Types (defaultOptions, EvalOptions(..), DebugMode(..))
 import Jana.Invert
 import qualified Jana.JanusToC as JTC
 
@@ -32,6 +32,7 @@ usage = "usage: jana [options] <file>\n\
         \  -i           print inverted program\n\
         \  -c           print C program\n\
         \  -d           interactive debug mode\n\
+        \  -e           enter debug mode on error\n\
         \                 (type \"h[elp]\" for options)"
 
 parseArgs :: IO (Maybe ([String], Options))
@@ -58,7 +59,9 @@ addOption opts ('-':'t':time) =
 addOption opts "-i" = return opts { invert = True }
 addOption opts "-c" = return opts { cCode = True }
 addOption opts@(Options { evalOpts = evalOptions }) "-d" =
- return $ opts { evalOpts = evalOptions {runDebugger = True } }
+ return $ opts { evalOpts = evalOptions {runDebugger = DebugOn } }
+addOption opts@(Options { evalOpts = evalOptions }) "-e" =
+ return $ opts { evalOpts = evalOptions {runDebugger = DebugError } }
 addOption _ f = Left $ "invalid option: " ++ f
 
 loadFile :: String -> IO String
