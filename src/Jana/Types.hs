@@ -138,6 +138,7 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
 
 data EvalState = ES { breakPoints :: BreakPoints
                     , forwardExecution :: Bool
+                    , userForwardExecution :: Bool
                     , skipNextBreak :: Bool
                     , firstDBbeginning :: Bool
                     , store :: Store}
@@ -187,11 +188,11 @@ addBreakPoint l =
 
 executeForward :: Eval ()
 executeForward =
-  modify $ \x -> x {forwardExecution = True}
+  modify $ \x -> x {userForwardExecution = True, forwardExecution = userForwardExecution x}
 
 executeBackward :: Eval ()
 executeBackward =
-  modify $ \x -> x {forwardExecution = False}
+  modify $ \x -> x {userForwardExecution = False, forwardExecution = not (userForwardExecution x)}
 
 isForwardExecution :: Eval Bool
 isForwardExecution = 
@@ -201,6 +202,7 @@ isForwardExecution =
 flipExecution :: Eval ()
 flipExecution =
   modify $ \x -> x {forwardExecution = not (forwardExecution x)}
+
 
 doWhen :: Monad m => Bool -> a -> (a -> m a) -> m a
 doWhen b a f =
@@ -254,7 +256,7 @@ showStore s =
         (mapM (\(name, ref) -> liftM (printVdecl name) (readIORef ref))
               (Map.toList (store s)))
 
-emptyStore = ES {breakPoints = Set.empty, forwardExecution = True, skipNextBreak = False, firstDBbeginning = True, store = Map.empty}
+emptyStore = ES {breakPoints = Set.empty, userForwardExecution = True, forwardExecution = True, skipNextBreak = False, firstDBbeginning = True, store = Map.empty}
 
 storeFromList :: [(String, IORef Value)] -> Store
 storeFromList = Map.fromList

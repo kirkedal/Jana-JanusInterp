@@ -333,10 +333,12 @@ makeBreak pos =
 parseDBCommand :: SourcePos -> [String] -> Eval ()
 parseDBCommand pos ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak pos
 parseDBCommand pos ("add":n)    = parseDBCommand pos ("a":n)
-parseDBCommand pos ["c"]        = executeForward
-parseDBCommand pos ["continue"] = parseDBCommand pos ["c"]
+parseDBCommand pos ["b"]        = executeBackward
+parseDBCommand pos ["backward"]  = parseDBCommand pos ["b"]
 parseDBCommand pos ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak pos
 parseDBCommand pos ("delete":n) = parseDBCommand pos ("d":n)
+parseDBCommand pos ["f"]        = executeForward
+parseDBCommand pos ["forward"] = parseDBCommand pos ["f"]
 parseDBCommand pos ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak pos
 parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
 parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
@@ -347,8 +349,6 @@ parseDBCommand pos ("p":var)    = mapM (\x -> catchError (printVar x) catchDebug
      do val <- (getVar $ Ident var pos)
         liftIO $ putStrLn $ printVdecl var val 
 parseDBCommand pos ("print":v)  = parseDBCommand pos ("p":v)
-parseDBCommand pos ["r"]        = setSkipNextBreak >> executeBackward
-parseDBCommand pos ["reverse"]  = parseDBCommand pos ["r"]
 parseDBCommand pos ["s"]        = 
   do env <- get
      liftIO $ showStore env >>= putStrLn
@@ -372,12 +372,12 @@ dbUsage = "Usage of the jana debugger\n\
         \IMPORTANT: all breakpoints will be added at the beginning of a line and only on statements.\n\
         \options:\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
-        \  c[ontinue]   continues execution to next breakpoint in current direction\n\
+        \  b[ackward]   reverse execution to previous breakpoint\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
+        \  f[orward]    execution to next breakpoint in forward direction\n\
         \  h[elp]       this menu\n\
         \  l[ine]       print current line\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
-        \  r[everse]    reverse execution direction\n\
         \  s[tore]      prints entire store\n\
         \  q[uit]       quit the debugger (end termination)"
 
