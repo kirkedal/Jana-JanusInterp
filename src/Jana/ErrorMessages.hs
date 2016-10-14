@@ -138,3 +138,7 @@ printfNotEnoughArgs = Message $
 printfUnrecognizedType :: Char -> Message
 printfUnrecognizedType char = Message $
   printf "Unrecognized format specifier: `%%%c'" char
+
+noExternalCalls :: Message
+noExternalCalls = Message $
+  printf "Call to external functions is not allowed as statements during interpretation"

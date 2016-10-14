@@ -12,7 +12,8 @@ import Jana.Invert
 -- Parsing variables with pointers
 
 -- MISSING:
---   Order of functions
+--   Define function instances
+--   Add header file
 
 commasep = hsep . punctuate (char ',')
 
@@ -124,6 +125,10 @@ formatStmt (Call id args _) =
   formatIdent Forward id <> parens (commasep $ map (formatIdent Value) args) <> semi
 formatStmt (Uncall id args _) =
   formatIdent Reverse id <> parens (commasep $ map (formatIdent Value) args) <> semi
+formatStmt (ExtCall id args _) =
+  formatIdent Forward id <> parens (commasep $ map (formatIdent Value) args) <> semi
+formatStmt (ExtUncall id args _) =
+  formatIdent Reverse id <> parens (commasep $ map (formatIdent Value) args) <> semi
 formatStmt (Swap id1 id2 p) = formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
 formatStmt (UserError msg _) =
   text "printf" <> parens (text (show msg)) <> semi $+$ text "exit()" <> semi
@@ -182,16 +187,31 @@ formatParam (Array id _size a_exp p) =
 
 formatParams = commasep . map formatParam
 
+defineProc proc =
+  (text "void" <+> formatIdent Forward (procname proc) <> 
+    parens (formatParams $ params proc)) <> text ";"
+      $+$
+    (text "void" <+> formatIdent Reverse (procname proc) <> 
+    parens (formatParams $ params proc)) <> text ";"
+
 
 -- Program
-formatProgram (Program mains procs) =
+formatProgram headerfile (Program mains procs) =
   text "/* Translated from Janus program */" $+$
   text "#include <stdio.h>      /* printf */" $+$
   text "#include <assert.h>" $+$ 
+  text include_header $+$
+  text "" $+$
+  vcat (intersperse (text "") $ map defineProc procs) $+$
   text "" $+$
   vcat (intersperse (text "") $ map formatProc procs) $+$
   text "" $+$
   vcat (intersperse (text "") $ map formatMain mains)
+  where
+    include_header = 
+      case headerfile of
+        Nothing   -> ""
+        (Just file) -> "#include \"" ++ file ++ "\""
 
 class ShowC a where
   showC :: a -> String
@@ -221,7 +241,7 @@ instance ShowC ProcMain where
   showC = render . formatMain
 
 instance ShowC Program where
-  showC = render . formatProgram
+  showC = render . formatProgram Nothing
 
 
 

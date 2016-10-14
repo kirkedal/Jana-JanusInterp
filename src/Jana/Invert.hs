@@ -35,6 +35,10 @@ invertStmt Locally (Call funId args pos) =
   Uncall funId args pos
 invertStmt Locally (Uncall funId args pos) =
   Call funId args pos
+invertStmt Locally (ExtCall funId args pos) =
+  ExtUncall funId args pos
+invertStmt Locally (ExtUncall funId args pos) =
+  ExtCall funId args pos
 invertStmt Globally stmt@(Call{}) = stmt
 invertStmt Globally stmt@(Uncall{}) = stmt
 invertStmt _ stmt@(UserError{}) = stmt

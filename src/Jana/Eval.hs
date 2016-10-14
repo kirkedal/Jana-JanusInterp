@@ -469,6 +469,10 @@ evalStmt stmt@(Call funId args _) =
 evalStmt (Uncall funId args _) =
   do proc <- getProc funId
      evalProc (invertProc proc) args
+evalStmt stmt@(ExtCall funId args pos) =
+  pos <!!> noExternalCalls
+evalStmt (ExtUncall funId args pos) =
+  pos <!!> noExternalCalls
 evalStmt (Swap id1 id2 pos) =
   do alias <- id1 `isSameArrayElement` id2
      unless alias $ do

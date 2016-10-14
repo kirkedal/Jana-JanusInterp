@@ -17,12 +17,14 @@ data Options = Options
   { timeOut :: Int
   , invert :: Bool
   , cCode  :: Bool
+  , header :: Maybe String
   , evalOpts :: EvalOptions }
 
 defaults = Options
   { timeOut = -1
   , invert = False
   , cCode = False
+  , header = Nothing
   , evalOpts = defaultOptions }
 
 usage = "usage: jana [options] <file>\n\
@@ -30,7 +32,9 @@ usage = "usage: jana [options] <file>\n\
         \  -m           use 32-bit modular arithmetic\n\
         \  -tN          timeout after N seconds\n\
         \  -i           print inverted program\n\
-        \  -c           print C program\n\
+        \  -c           print C++ program\n\
+        \  -h=file.h    header files to be included in translation to C++\n\
+        \                 this header files is intended use with external functions\n\ 
         \  -d           interactive debug mode\n\
         \  -e           enter debug mode on error\n\
         \                 (type \"h[elp]\" for options)"
@@ -58,6 +62,7 @@ addOption opts ('-':'t':time) =
     _               -> Left "non-number given to -t option"
 addOption opts "-i" = return opts { invert = True }
 addOption opts "-c" = return opts { cCode = True }
+addOption opts ('-':'h':'=':headerfile) = return opts { header = Just headerfile }
 addOption opts@(Options { evalOpts = evalOptions }) "-d" =
  return $ opts { evalOpts = evalOptions {runDebugger = DebugOn } }
 addOption opts@(Options { evalOpts = evalOptions }) "-e" =
@@ -75,19 +80,19 @@ printInverted filename =
        Left err   -> print err >> (exitWith $ ExitFailure 1)
        Right prog -> print $ invertProgram prog
 
-printCcode :: String -> IO ()
-printCcode filename =
+printCcode :: String -> Maybe String -> IO ()
+printCcode filename headerfile =
   do text <- loadFile filename
      case parseProgram filename text of
        Left err   -> print err >> (exitWith $ ExitFailure 1)
-       Right prog -> print $ JTC.formatProgram prog
+       Right prog -> print $ JTC.formatProgram headerfile prog
 
-printInvertedCcode :: String -> IO ()
-printInvertedCcode filename =
+printInvertedCcode :: String -> Maybe String -> IO ()
+printInvertedCcode filename headerfile =
   do text <- loadFile filename
      case parseProgram filename text of
        Left err   -> print err >> (exitWith $ ExitFailure 1)
-       Right prog -> print $ JTC.formatProgram $ invertProgram prog
+       Right prog -> print $ JTC.formatProgram headerfile $ invertProgram prog
 
 parseAndRun :: String -> EvalOptions -> IO ()
 parseAndRun filename evalOptions =
@@ -99,8 +104,8 @@ parseAndRun filename evalOptions =
 main :: IO ()
 main = do args <- parseArgs
           case args of
-            Just ([file], Options { cCode = True, invert = True }) -> printInvertedCcode file
-            Just ([file], Options { cCode = True }) -> printCcode file
+            Just ([file], Options { cCode = True, invert = True, header = h }) -> printInvertedCcode file h
+            Just ([file], Options { cCode = True, header = h }) -> printCcode file h
             Just ([file], Options { invert = True }) -> printInverted file
             Just ([file], opts) ->
               do res <- timeout (timeOut opts * 1000000)

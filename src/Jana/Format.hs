@@ -140,6 +140,12 @@ formatStmt (Call id args _) =
 formatStmt (Uncall id args _) =
   text "uncall" <+> formatIdent id <> parens (commasep $ map formatIdent args)
 
+formatStmt (ExtCall id args _) =
+  text "call external" <+> formatIdent id <> parens (commasep $ map formatIdent args)
+
+formatStmt (ExtUncall id args _) =
+  text "uncall external" <+> formatIdent id <> parens (commasep $ map formatIdent args)
+
 formatStmt (Swap id1 id2 _) =
   formatLval id1 <+> text "<=>" <+> formatLval id2
 

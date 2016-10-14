@@ -68,6 +68,7 @@ janaDef = Token.LanguageDef {
                                          , "delocal"
                                          , "call"
                                          , "uncall"
+                                         , "external"
                                          , "error"
                                          , "skip"
                                          , "empty"
@@ -273,17 +274,25 @@ callStmt :: Parser Stmt
 callStmt =
   do pos   <- getPosition
      reserved "call"
+     e <- optionMaybe $ reserved "external"
      procname <- identifier
      args_exp <- parens $ sepBy expression comma
-     formatArgumentList args_exp (\a -> Call procname a pos)
+     formatArgumentList args_exp (callType e procname pos)
+  where 
+    callType Nothing  procname pos = (\a -> Call procname a pos)
+    callType (Just _) procname pos = (\a -> ExtCall procname a pos)
 
 uncallStmt :: Parser Stmt
 uncallStmt =
   do pos   <- getPosition
      reserved "uncall"
+     e <- optionMaybe $ reserved "external"
      procname <- identifier
      args_exp <- parens $ sepBy expression comma
-     formatArgumentList args_exp (\a -> Uncall procname a pos)
+     formatArgumentList args_exp (callType e procname pos)
+  where 
+    callType Nothing  procname pos = (\a -> Uncall procname a pos)
+    callType (Just _) procname pos = (\a -> ExtUncall procname a pos)
 
 formatArgumentList :: [Expr] -> ([Ident] -> Stmt) -> Parser Stmt
 formatArgumentList args_expr stmtFun =

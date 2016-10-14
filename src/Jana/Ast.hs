@@ -70,6 +70,8 @@ data Stmt
     | Local     LocalDecl [Stmt] LocalDecl SourcePos
     | Call      Ident [Ident] SourcePos
     | Uncall    Ident [Ident] SourcePos
+    | ExtCall   Ident [Ident] SourcePos
+    | ExtUncall Ident [Ident] SourcePos
     | UserError String SourcePos
     | Swap      Lval Lval SourcePos
     | Prints    Prints SourcePos
