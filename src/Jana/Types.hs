@@ -10,7 +10,7 @@ module Jana.Types (
     EvalOptions(..), defaultOptions, DebugMode(..),
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
     Eval, runEval, (<!!>),
-    BreakPoints, checkLine, EvalState, 
+    BreakPoints, checkLine, EvalState, ModEval(..),
     checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, 
     whenDebuggingElse, doWhenDebugging, whenFirstBreak, whenFullDebugging, isErrorDebugging,
     executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, 
@@ -49,11 +49,14 @@ data Value
   deriving (Eq)
 
 instance Show Value where
-  show (JInt x)    = show x
-  show (JArray [_] xs) = "{" ++ intercalate ", " (map show xs) ++ "}"
+  show (JBool True)       = "true"
+  show (JBool False)      = "false"
+  show (JInt x)           = show x
+  show (JArray [] _)      = ""
+  show (JArray [_] xs)    = "{" ++ intercalate ", " (map show xs) ++ "}"
   show (JArray (i:is) xs) = "{" ++ intercalate ", " (map (\x -> show $ JArray is x) $ partitionInto i xs) ++ "}"
-  show (JStack []) = "nil"
-  show (JStack xs) = "<" ++ intercalate ", " (map show xs) ++ "]"
+  show (JStack [])        = "nil"
+  show (JStack xs)        = "<" ++ intercalate ", " (map show xs) ++ "]"
 
 partitionInto :: Integer -> [a] -> [[a]]
 partitionInto s n = go n
@@ -121,6 +124,11 @@ opFunc LE   = wrap JBool (<=)
 performOperation :: BinOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
 performOperation Div (JInt _) (JInt 0) _ pos =
   pos <!!> divisionByZero
+performOperation Div (JInt x) (JInt y) _ pos =
+  do flag <- asks (modInt . evalOptions)
+     case flag of
+       (ModPrime n) -> return $ opFunc Mul x (y^(n-2))
+       _ -> return $ opFunc Div x y
 performOperation op (JInt x) (JInt y) _ _ =
   return $ opFunc op x y
 performOperation _ (JInt _) val _ pos =
@@ -304,8 +312,11 @@ data EvalEnv = EE { evalOptions :: EvalOptions
                   , procEnv :: ProcEnv
                   , aliases :: AliasSet}
 
-data EvalOptions = EvalOptions { modInt :: Bool, runReverse :: Bool, runDebugger :: DebugMode}
-defaultOptions   = EvalOptions { modInt = False, runReverse = False, runDebugger = DebugOff }
+data ModEval = None | ModPow2 Int | ModPrime Int
+  deriving (Eq)
+
+data EvalOptions = EvalOptions { modInt :: ModEval, runReverse :: Bool, runDebugger :: DebugMode}
+defaultOptions   = EvalOptions { modInt = None, runReverse = False, runDebugger = DebugOff }
 
 data DebugMode = DebugOff | DebugOn | DebugError
   deriving (Eq)

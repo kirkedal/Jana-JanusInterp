@@ -1,14 +1,14 @@
 
 import System.Environment
 import System.Exit
-import System.IO
 import System.Timeout
 import Control.Monad
 import Data.List
+
 -- import Jana.ParserBasic
 import Jana.Parser
 import Jana.Eval (runProgram)
-import Jana.Types (defaultOptions, EvalOptions(..), DebugMode(..))
+import Jana.Types (defaultOptions, EvalOptions(..), DebugMode(..), ModEval(..))
 import Jana.Invert
 import qualified Jana.JanusToC as JTC
 
@@ -20,6 +20,7 @@ data Options = Options
   , header :: Maybe String
   , evalOpts :: EvalOptions }
 
+defaults :: Options
 defaults = Options
   { timeOut = -1
   , invert = False
@@ -27,14 +28,16 @@ defaults = Options
   , header = Nothing
   , evalOpts = defaultOptions }
 
+usage :: String
 usage = "usage: jana [options] <file>\n\
         \options:\n\
-        \  -m           use 32-bit modular arithmetic\n\
+        \  -m[n]        use n-bit modular arithmetic; if (n) is unset 32 is used\n\
+        \  -p[n]        use GF(n) finite field arithmetic; if (n) is unset M_7 (127) is used\n\
         \  -tN          timeout after N seconds\n\
         \  -i           print inverted program\n\
         \  -c           print C++ program\n\
         \  -h=file.h    header files to be included in translation to C++\n\
-        \                 this header files is intended use with external functions\n\ 
+        \                 this header files is intended use with external functions\n\
         \  -d           interactive debug mode\n\
         \  -e           enter debug mode on error\n\
         \                 (type \"h[elp]\" for options)"
@@ -55,7 +58,17 @@ checkFlags = foldM addOption defaults
 
 addOption :: Options -> String -> Either String Options
 addOption opts@(Options { evalOpts = evalOptions }) "-m" =
-  return $ opts { evalOpts = evalOptions { modInt = True } }
+  return $ opts { evalOpts = evalOptions { modInt = (ModPow2 32) } }
+addOption opts@(Options { evalOpts = evalOptions }) ('-':'m':n) =
+  case reads n of
+    [(nVal, "")] -> return $ opts { evalOpts = evalOptions { modInt = (ModPow2 nVal) } }
+    _               -> Left "non-number given to -m option"
+addOption opts@(Options { evalOpts = evalOptions }) "-p" =
+  return $ opts { evalOpts = evalOptions { modInt = (ModPrime $ 2^7-1) } }
+addOption opts@(Options { evalOpts = evalOptions }) ('-':'p':n) =
+  case reads n of
+    [(nVal, "")] -> return $ opts { evalOpts = evalOptions { modInt = (ModPrime nVal) } }
+    _               -> Left "non-number given to -p option"
 addOption opts ('-':'t':time) =
   case reads time of
     [(timeVal, "")] -> return $ opts { timeOut = timeVal }

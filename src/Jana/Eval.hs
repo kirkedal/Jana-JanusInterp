@@ -435,7 +435,7 @@ evalStmt (Local assign1 stmts assign2 _) =
              valsI <- mapM (checkTypeInt pos) vals
              bindVar id $ JArray sizeInt valsI
         assertBinding (LocalVar _ id expr pos) =
-          do val <- evalModularAliasExpr (Var id) expr
+          do val <- evalModularAliasExpr (Just $ Var id) expr
              val' <- getVar id
              unless (val == val') $
                pos <!!> wrongDelocalValue id (show val) (show val')
@@ -443,7 +443,7 @@ evalStmt (Local assign1 stmts assign2 _) =
         assertBinding (LocalArray id size expr pos) =
           do sizeInt <- evalAliasSize pos (Just (Var id)) size $ Just $ sizeEstimate expr
              exprs <- flattenArray pos sizeInt expr
-             vals  <- mapM (evalModularAliasExpr (Var id)) exprs
+             vals  <- mapM (evalModularAliasExpr (Just $ Var id)) exprs
              valsI <- mapM (checkTypeInt pos) vals
              let valsC = JArray sizeInt valsI
              vals' <- getVar id
@@ -493,9 +493,10 @@ evalStmt (Swap id1 id2 pos) =
       pos <!!> swapTypeError (showValueType val) "array"
     Var x1 `isSameArrayElement` Var x2 = return False
     Lookup x1 e1 `isSameArrayElement` Lookup x2 e2 =
-        do v1 <- mapM (evalExpr Nothing) e1
-           v2 <- mapM (evalExpr Nothing) e2
+        do v1 <- mapM (evalModularExpr) e1
+           v2 <- mapM (evalModularExpr) e2
            return $ x1 == x2 && v1 == v2
+    _ `isSameArrayElement` _ = error "Comparison of different types"
 evalStmt (UserError msg pos)          = pos <!!> userError msg
 evalStmt (Prints (Print msg) pos)     = liftIO $ putStrLn msg
 evalStmt (Prints (Printf msg []) pos) = evalStmts [Prints (Print msg) pos]
@@ -530,15 +531,20 @@ evalLval lv (Lookup id@(Ident _ pos) es) =
 numberToModular :: Value -> Eval Value
 numberToModular (JInt x) =
   do flag <- asks (modInt . evalOptions)
-     return $ JInt $ if flag then ((x + 2^31) `mod` 2^32) - 2^31 else x
+     return $ JInt $ ntm flag
+  where
+    ntm None     = x
+    -- ntm ModPow32 = ((x + 2^7) `mod` 2^8) - 2^7
+    ntm (ModPow2 n) = ((x + 2^(n-1)) `mod` 2^n) - 2^(n-1)
+    ntm (ModPrime n) = x `mod` (toInteger n)
 numberToModular val = return val
 
 
 evalModularExpr :: Expr -> Eval Value
 evalModularExpr expr = evalExpr Nothing expr >>= numberToModular
 
-evalModularAliasExpr :: Lval -> Expr -> Eval Value
-evalModularAliasExpr lv expr = evalExpr (Just lv) expr >>= numberToModular
+evalModularAliasExpr :: Maybe Lval -> Expr -> Eval Value
+evalModularAliasExpr lv expr = evalExpr lv expr >>= numberToModular
 
 findAlias :: Ident -> Ident -> Eval ()
 findAlias id1 id2@(Ident _ pos) =
@@ -557,9 +563,9 @@ checkLvalAlias (Just (Var id)) (Var id2) = findAlias id id2
 checkLvalAlias (Just (Var id)) (Lookup id2 _) = findAlias id id2
 checkLvalAlias (Just (Lookup id _)) (Var id2) = findAlias id id2
 checkLvalAlias (Just (Lookup id exprn)) (Lookup id2 exprm) =
-  do n <- mapM (evalExpr Nothing) exprn
-     m <- mapM (evalExpr Nothing) exprm
-     if   n == m 
+  do n <- mapM (evalModularExpr) exprn
+     m <- mapM (evalModularExpr) exprm
+     if   n == m
        then findAlias id id2
        else return ()
 
@@ -569,21 +575,21 @@ evalExpr _ (Boolean b _)      = return $ JBool b
 evalExpr _ (Nil _)            = return nil
 evalExpr lv expr@(LV val _)   = inExpression expr $ evalLval lv val
 evalExpr lv expr@(UnaryOp Not e) = inExpression expr $
-  do x <- unpackBool (getExprPos e) =<< evalExpr lv e
+  do x <- unpackBool (getExprPos e) =<< evalModularAliasExpr lv e
      return $ JBool $ not x
 evalExpr lv expr@(BinOp LAnd e1 e2) = inExpression expr $
-  do x <- unpackBool (getExprPos e1) =<< evalExpr lv e1
+  do x <- unpackBool (getExprPos e1) =<< evalModularAliasExpr lv e1
      if x
-       then liftM JBool (unpackBool (getExprPos e2) =<< evalExpr lv e2)
+       then liftM JBool (unpackBool (getExprPos e2) =<< evalModularAliasExpr lv e2)
        else return $ JBool False
 evalExpr lv expr@(BinOp LOr e1 e2) = inExpression expr $
-  do x <- unpackBool (getExprPos e1) =<< evalExpr lv e1
+  do x <- unpackBool (getExprPos e1) =<< evalModularAliasExpr lv e1
      if x
        then return $ JBool True
-       else liftM JBool $ unpackBool (getExprPos e2) =<< evalExpr lv e2
+       else liftM JBool $ unpackBool (getExprPos e2) =<< evalModularAliasExpr lv e2
 evalExpr lv expr@(BinOp op e1 e2) = inExpression expr $
-  do x <- evalExpr lv e1
-     y <- evalExpr lv e2
+  do x <- evalModularAliasExpr lv e1
+     y <- evalModularAliasExpr lv e2
      performOperation op x y (getExprPos e1) (getExprPos e2)
 evalExpr lv expr@(Top id pos) = inArgument "top" (ident id) $
   do checkAlias lv id
