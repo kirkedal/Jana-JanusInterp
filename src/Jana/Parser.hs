@@ -21,7 +21,7 @@ import Jana.Error
 type Parser = Parsec String Int
 
 getFreshVar :: Parser Ident
-getFreshVar = 
+getFreshVar =
   do i <- getState
      putState $ i + 1
      p <- getPosition
@@ -79,6 +79,9 @@ janaDef = Token.LanguageDef {
                                          , "printf"
                                          , "nil"
                                          , "assert"
+                                         , "iterate"
+                                         , "by"
+                                         , "to"
                                          ]
               , Token.caseSensitive    = True
   }
@@ -112,7 +115,10 @@ program =
   do whiteSpace
      (mains, procs) <- liftM partitionEithers (many genProcedure)
      eof
-     return $ Program mains procs
+     case mains of
+       []  -> return $ Program Nothing procs
+       [m] -> return $ Program (Just m) procs
+       _   -> error "More than one mail procedure defined"
 
 genProcedure :: Parser (Either ProcMain Proc)
 genProcedure =
@@ -162,6 +168,7 @@ statement :: Parser Stmt
 statement =   assignStmt
           <|> ifStmt
           <|> fromStmt
+          <|> iterateStmt
           <|> pushStmt
           <|> popStmt
           <|> localStmt
@@ -211,6 +218,19 @@ fromStmt =
      reserved "until"
      exitcond  <- expression
      return $ From entrycond stats1 stats2 exitcond pos
+
+iterateStmt :: Parser Stmt
+iterateStmt =
+  do pos   <- getPosition
+     reserved "iterate"
+     typ   <- atype
+     ident <- identifier
+     from  <- reservedOp "=" >> expression
+     step  <- option (Number 1 pos) $ reserved "by" >> expression
+     end   <- reserved "to" >> expression
+     stm   <- many1 statement
+     reserved "end"
+     return $ Iterate typ ident from step end stm pos
 
 pushStmt :: Parser Stmt
 pushStmt =
@@ -278,7 +298,7 @@ callStmt =
      procname <- identifier
      args_exp <- parens $ sepBy expression comma
      formatArgumentList args_exp (callType e procname pos)
-  where 
+  where
     callType Nothing  procname pos = (\a -> Call procname a pos)
     callType (Just _) procname pos = (\a -> ExtCall procname a pos)
 
@@ -290,7 +310,7 @@ uncallStmt =
      procname <- identifier
      args_exp <- parens $ sepBy expression comma
      formatArgumentList args_exp (callType e procname pos)
-  where 
+  where
     callType Nothing  procname pos = (\a -> Uncall procname a pos)
     callType (Just _) procname pos = (\a -> ExtUncall procname a pos)
 
@@ -298,11 +318,11 @@ formatArgumentList :: [Expr] -> ([Ident] -> Stmt) -> Parser Stmt
 formatArgumentList args_expr stmtFun =
   do pos   <- getPosition
      args_map <- mapM chkExpression args_expr
-     let (args,exprs) = unzip args_map 
+     let (args,exprs) = unzip args_map
      return $ foldr (foldFun pos) (stmtFun args) exprs
   where
     chkExpression (LV (Var i) _) = return (i, Nothing)
-    chkExpression expr = 
+    chkExpression expr =
       do f <- getFreshVar
          return (f, Just((f,expr)))
     foldFun p  Nothing    stmt = stmt

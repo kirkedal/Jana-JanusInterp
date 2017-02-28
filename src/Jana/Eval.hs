@@ -8,6 +8,7 @@ module Jana.Eval (
 
 import Prelude hiding (GT, LT, EQ, userError)
 import System.Exit
+import System.IO
 import Data.Char (toLower, isSpace)
 import Data.List (genericSplitAt, genericReplicate, intercalate, genericTake,  genericIndex)
 import Control.Monad
@@ -78,11 +79,13 @@ assertTrue  expr = catchError (assert True  expr) catchDebugError
 assertFalse expr = catchError (assert False expr) catchDebugError
 
 checkType :: Type -> Value -> Eval ()
-checkType (Int pos)   (JInt _)   = return ()
-checkType (Int pos)   (JArray _ _) = return ()
-checkType (Stack pos) (JStack _) = return ()
+checkType (Int _)     (JInt _)     = return ()
+checkType (Int _)     (JArray _ _) = return ()
+checkType (BoolT _)   (JBool _)    = return ()
+checkType (Stack _)   (JStack _)   = return ()
 checkType (Int pos)   val = pos <!!> typeMismatch ["int"] (showValueType val)
 checkType (Stack pos) val = pos <!!> typeMismatch ["stack"] (showValueType val)
+checkType (BoolT pos) val = pos <!!> typeMismatch ["bool"] (showValueType val)
 
 checkTypeInt :: SourcePos -> Value -> Eval Integer
 checkTypeInt pos (JInt v) = return v
@@ -105,6 +108,7 @@ checkVdecl vdecl val =
   where vdeclPos (Scalar _ _ _ pos) = pos
         vdeclPos (Array _ _ _ pos)  = pos
         vdeclType (Scalar Int{} _ _ _)   = "int"
+        vdeclType (Scalar BoolT{} _ _ _) = "bool"
         vdeclType (Scalar Stack{} _ _ _) = "stack"
         vdeclType (Array{})              = "array"
 
@@ -116,11 +120,10 @@ arrayLookup (sIdx,arr) idx pos =
     Just idx' -> return $ JInt $ genericIndex arr idx'
 
 arrayModify :: SourcePos -> Index -> Array -> Index -> Integer -> Eval Array
-arrayModify pos sIdx arr idx val = 
+arrayModify pos sIdx arr idx val =
   case findIndex sIdx idx of
     Nothing   -> pos <!!> outOfBounds idx sIdx
     Just idx' -> return $ (\(xs, _:ys) -> xs ++ val : ys) $ genericSplitAt idx' arr
-  
 
 getExprPos :: Expr -> SourcePos
 getExprPos (Number _ pos)  = pos
@@ -132,24 +135,23 @@ getExprPos (Empty _ pos)   = pos
 getExprPos (Top _ pos)     = pos
 getExprPos (Size _ pos)    = pos
 getExprPos (Nil pos)       = pos
-
-
+getExprPos (ArrayE _ pos)  = pos
 
 runProgram :: String -> Program -> EvalOptions -> IO ()
-runProgram _ p@(Program [main] procs) evalOptions =
+runProgram _ p@(Program (Just main) procs) evalOptions =
   runProgramAfterDBcheck checkDB evalOptions
   where
     checkDB =
       if (runDebugger evalOptions) == DebugOff
         then p
         else injectDBProgram p 
-runProgram filename (Program [] _) _ =
+runProgram filename (Program Nothing _) _ =
   print (newFileError filename noMainProc) >> exitWith (ExitFailure 1)
-runProgram filename (Program _ _) _ =
-  print (newFileError filename multipleMainProcs) >> exitWith (ExitFailure 1)
+-- runProgram filename (Program _ _) _ =
+--   print (newFileError filename multipleMainProcs) >> exitWith (ExitFailure 1)
 
 runProgramAfterDBcheck :: Program -> EvalOptions -> IO ()
-runProgramAfterDBcheck (Program [main] procs) evalOptions =
+runProgramAfterDBcheck (Program (Just main) procs) evalOptions =
   case procEnvFromList procs of
     Left err -> print err
     Right procEnv ->
@@ -160,6 +162,7 @@ runProgramAfterDBcheck (Program [main] procs) evalOptions =
             case runRes of
               Right (_, s) -> showStore s >>= putStrLn
               Left err     -> print err >> exitWith (ExitFailure 1)
+runProgramAfterDBcheck _ _ = error ""
 
 ---- Array functions
 -- Clean a bit up here
@@ -184,12 +187,12 @@ evalSize pos exprs index = evalAliasSize pos Nothing exprs index
 
 evalAliasSize :: SourcePos -> Maybe Lval -> [Maybe Expr] -> Maybe Index -> Eval Index
 evalAliasSize _ _ [] _ = return []
-evalAliasSize pos lval (Nothing:size) (Just (a:altSize)) = 
+evalAliasSize pos lval (Nothing:size) (Just (a:altSize)) =
   do sizeInt <- evalAliasSize pos lval size $ Just altSize
      return $ a:sizeInt
-evalAliasSize pos lval ((Just s):size) altSize = 
+evalAliasSize pos lval ((Just s):size) altSize =
   do aliasExpr lval s
-     sizeVal <- evalExpr lval s >>= numberToModular
+     sizeVal <- evalModularAliasExpr lval s
      sizeInt <- checkTypeInt pos sizeVal
      unless (sizeInt > 0) $
        pos <!!> arraySize
@@ -203,27 +206,28 @@ evalMain :: ProcMain -> Eval ()
 evalMain proc@(ProcMain vdecls body pos) =
   do mapM_ initBinding vdecls
      evalStmts body
-  where 
+  where
+    initBinding (Scalar (BoolT _) id Nothing     _)   = bindVar id $ JBool True
     initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
     initBinding (Scalar (Stack _) id Nothing     _)   = bindVar id nil
-    initBinding (Scalar typ       id (Just expr) pos) = 
-      do val <- evalModularAliasExpr (Var id) expr
+    initBinding (Scalar typ       id (Just expr) pos) =
+      do val <- evalModularAliasExpr (Just $ Var id) expr
          checkType typ val
          bindVar id val
     initBinding (Array id [Nothing]     Nothing pos) = pos <!!> arraySizeMissing id
-    initBinding (Array id size Nothing pos) = 
+    initBinding (Array id size Nothing pos) =
       do sizeInt <- evalSize pos size Nothing
          exprs <- flattenArray pos sizeInt $ ArrayE [] pos
          vals  <- mapM evalModularExpr exprs
          valsI <- mapM (checkTypeInt pos) vals
          bindVar id $ JArray sizeInt valsI
-    initBinding (Array id size (Just expr) pos) = 
+    initBinding (Array id size (Just expr) pos) =
       do sizeInt <- evalSize pos size $ Just $ sizeEstimate expr
          exprs <- flattenArray pos sizeInt expr
          vals  <- mapM evalModularExpr exprs
          valsI <- mapM (checkTypeInt pos) vals
          bindVar id $ JArray sizeInt valsI
-        
+
 
 evalProc :: Proc -> [Ident] -> Eval ()
 evalProc proc args = inProcedure proc $
@@ -255,18 +259,19 @@ evalProc proc args = inProcedure proc $
 
 assignLval :: ModOp -> Lval -> Expr -> SourcePos -> Eval ()
 assignLval modOp lv@(Var id) expr _ =
-  do exprVal <- evalModularAliasExpr lv expr
+  do exprVal <- evalModularAliasExpr (Just lv) expr
      varVal  <- getVar id
-     performModOperation modOp varVal exprVal exprPos exprPos >>= setVar id
+     val <- performModOperation modOp varVal exprVal exprPos exprPos >>= numberToModular
+     setVar id val
   where exprPos = getExprPos expr
 assignLval modOp (Lookup id idxExpr) expr pos =
   do let ps      = map getExprPos idxExpr
-     idx         <- mapM (\(e, p) -> (unpackInt p =<< evalModularAliasExpr (Var id) e)) $ zip idxExpr ps 
+     idx         <- mapM (\(e, p) -> (unpackInt p =<< evalModularAliasExpr (Just $ Var id) e)) $ zip idxExpr ps 
      (sIdx,arr)  <- unpackArray pos =<< getVar id
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
-     val    <- evalModularAliasExpr (Lookup id idxVals) expr
+     val    <- evalModularAliasExpr (Just $ Lookup id idxVals) expr
      oldval <- arrayLookup (sIdx,arr) idx pos
-     newval <- unpackInt pos =<< performModOperation modOp oldval val exprPos exprPos
+     newval <- unpackInt pos =<< numberToModular =<< performModOperation modOp oldval val exprPos exprPos
      arrUpd <- arrayModify pos sIdx arr idx newval
      setVar id $ JArray sIdx arrUpd
   where exprPos = getExprPos expr
@@ -285,7 +290,7 @@ evalStmts_ s_come s_done =
     fwd (s:sc) = evalStmtFwd s >> whenForwardExecutionElse (evalStmts_ sc (s:s_done)) (evalStmts_ s_come s_done)
     bck []     = return ()
     bck (s:sd) = evalStmtBck s >> whenForwardExecutionElse (evalStmts_ (s_come) s_done) (evalStmts_ (s:s_come) sd)
- 
+
 evalStmtBck :: Stmt -> Eval ()
 -- evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
 --   where
@@ -306,9 +311,13 @@ evalStmtFwd stmt =
 
 makeBreak :: SourcePos -> Eval ()
 makeBreak pos =
-  whenDebugging (((parseDBCommand pos) . splitArgs) =<< (liftIO $ getLine))
-  where 
-    splitArgs s = 
+  whenDebugging debug
+  where
+    debug = do
+      liftIO $ (putStr "> ") >> hFlush stdout
+      c <- liftIO getLine
+      parseDBCommand pos $ splitArgs c
+    splitArgs s =
       case dropWhile isSpace s of
         "" -> []
         s' -> w : splitArgs s''
@@ -328,12 +337,12 @@ parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
 parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
 parseDBCommand pos ["line"]     = parseDBCommand pos ["l"]
 parseDBCommand pos ("p":var)    = mapM (\x -> catchError (printVar x) catchDebugError) var >> makeBreak pos
-  where 
+  where
     printVar var =
      do val <- (getVar $ Ident var pos)
         liftIO $ putStrLn $ printVdecl var val 
 parseDBCommand pos ("print":v)  = parseDBCommand pos ("p":v)
-parseDBCommand pos ["s"]        = 
+parseDBCommand pos ["s"]        =
   do env <- get
      liftIO $ showStore env >>= putStrLn
      makeBreak pos
@@ -341,14 +350,14 @@ parseDBCommand pos ["store"]    = parseDBCommand pos ["s"]
 parseDBCommand pos ["q"]        = liftIO $ exitWith $ ExitSuccess
 parseDBCommand pos ["quit"]     = parseDBCommand pos ["q"]
 parseDBCommand pos str          = (liftIO $ putStrLn errorTxt) >> makeBreak pos
-  where 
+  where
     errorTxt = "Unknown command: \"" ++ (intercalate " " str) ++ "\". Type \"h[elp]\" to see known commands."
 
 catchDebugError :: JanaError  -> Eval ()
-catchDebugError msg = 
-  whenDebugging 
-    (liftIO $ putStrLn $ "[Break: ERROR (line " ++ (show $ sourceLine $ errorPos msg) ++ ")]") >> 
-      (liftIO $ putStrLn $ show (errorMessages msg)) >> 
+catchDebugError msg =
+  whenDebugging
+    (liftIO $ putStrLn $ "[Break: ERROR (line " ++ (show $ sourceLine $ errorPos msg) ++ ")]") >>
+      (liftIO $ putStrLn $ show (errorMessages msg)) >>
       makeBreak (errorPos msg)
 
 
@@ -368,8 +377,8 @@ dbUsage = "Usage of the jana debugger\n\
 
 evalStmt :: Stmt -> Eval ()
 -- evalStmt stmt | trace ("EvalStmt at line" ++ (show $ sourceLine $ stmtPos stmt) ++ " doing " ++ (show stmt)) False = undefined
-evalStmt (Debug Beginning pos) =  
-  do whenFullDebugging $ 
+evalStmt (Debug Beginning pos) =
+  do whenFullDebugging $
        whenFirstBreak
          (liftIO $ putStrLn "Welcome to the Jana debugger. Type \"h[elp]\" for the help menu.")
          (liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ ")]") >>
@@ -377,13 +386,12 @@ evalStmt (Debug Beginning pos) =
      er <- isErrorDebugging
      fw <- isUserForwardExecution
      when (er && (not fw)) ((liftIO $ putStrLn $ "[Break at BEGIN (line " ++ (show $ sourceLine pos) ++ ")]") >> makeBreak pos)
-evalStmt (Debug End pos) = 
+evalStmt (Debug End pos) =
   whenFullDebugging $ (liftIO $ putStrLn $ "[Break at END (_after_ line " ++ (show $ sourceLine pos) ++ ")]") >> makeBreak pos
-evalStmt (Debug Normal pos) = 
+evalStmt (Debug Normal pos) =
   do isBreak <- checkForBreak pos
-     when isBreak $ 
+     when isBreak $
        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak pos
-
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
 evalStmt (If e1 s1 s2 e2 _) =
   do val1 <- unpackBool (getExprPos e1) =<< evalModularExpr e1
@@ -401,11 +409,19 @@ evalStmt (From e1 s1 s2 e2 pos) =
                   val <- unpackBool (getExprPos e2) =<< evalModularExpr e2
                   whenForwardExecution (unless val (loopRec >> whenBackwardExecution (assertFalse e2 >> evalStmts s1)))
         loopRec = do evalStmts s2
-                     whenForwardExecution 
-                       (assertFalse e1 >> 
+                     whenForwardExecution
+                       (assertFalse e1 >>
                          whenForwardExecution (loop >> whenBackwardExecution (assertFalse e1)) >>
-                         whenBackwardExecution (evalStmts s2)) 
-
+                         whenBackwardExecution (evalStmts s2))
+evalStmt (Iterate typ ident startE stepE endE stmts pos) =
+  evalStmt (Local
+    (LocalVar typ ident startE pos)
+    [From
+      (BinOp EQ (LV (Var ident) pos) startE)
+      []
+      (stmts++[Assign AddEq (Var ident) stepE pos])
+      (BinOp EQ (LV (Var ident) pos) (BinOp Add endE stepE)) pos]
+    (LocalVar typ ident (BinOp Add endE stepE) pos) pos)
 evalStmt (Push id1 id2 pos) =
   do head <- unpackInt pos   =<< getVar id1
      tail <- unpackStack pos =<< getVar id2
@@ -609,16 +625,21 @@ evalExpr _ expr@(Size id@(Ident _ pos) _) = inArgument "size" (ident id) $
        JArray (i:_) _ -> return $ JInt (toInteger i)
        JStack xs -> return $ JInt (toInteger $ length xs)
        val       -> pos <!!> typeMismatch ["array", "stack"] (showValueType val)
+evalExpr _ (UnaryOp FromLoop _) = error "Undefined evaluation of expression"
+evalExpr _ (ArrayE _ _) = error "Undefined evaluation of expression"
 
 -- |This alias check differs to the alias check in the evalExpr in that it also includes size.
 -- |This is used in delocal where the delocaliser array is not allowed.
 aliasExpr :: Maybe Lval -> Expr -> Eval ()
-aliasExpr _  (Number _ _)    = return ()
-aliasExpr _  (Boolean _ _)   = return ()
-aliasExpr _  (Nil _)         = return ()
-aliasExpr lv (LV val _)      = checkLvalAlias lv val
-aliasExpr lv (UnaryOp Not e) = aliasExpr lv e
-aliasExpr lv (BinOp _ e1 e2) = aliasExpr lv e1 >> aliasExpr lv e2
-aliasExpr lv (Top id pos)    = checkAlias lv id
-aliasExpr lv (Empty id pos)  = checkAlias lv id
-aliasExpr lv (Size id _)     = checkAlias lv id
+aliasExpr _  (Number _ _)         = return ()
+aliasExpr _  (Boolean _ _)        = return ()
+aliasExpr _  (Nil _)              = return ()
+aliasExpr lv (LV val _)           = checkLvalAlias lv val
+aliasExpr lv (UnaryOp Not e)      = aliasExpr lv e
+aliasExpr lv (BinOp _ e1 e2)      = aliasExpr lv e1 >> aliasExpr lv e2
+aliasExpr lv (Top ident pos)      = checkAlias lv ident
+aliasExpr lv (Empty ident pos)    = checkAlias lv ident
+aliasExpr lv (Size ident _)       = checkAlias lv ident
+aliasExpr _  (UnaryOp FromLoop _) = error "FromLoop should have been extracted"
+aliasExpr _  (ArrayE _ _)         = return ()
+

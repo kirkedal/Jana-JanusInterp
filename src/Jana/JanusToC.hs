@@ -21,16 +21,17 @@ stmtWithBody :: Doc -> Doc -> Doc
 stmtWithBody lead doc = lead <+> text "{" $+$ (nest 4 doc) $+$ text "}"
 
 formatType (Int _)   = text "int"
--- formatType (Stack _) = text "stack"
+formatType (Stack _) = error "Stack not supported in C Translation"
+formatType (BoolT _) = error "Stack not supported in C Translation"
 
-data IdentType = Forward | Reverse | Value | Pointer | Reference
+data IdentType = Forward | Reverse | Value | Pointer Int | Reference
 
 formatIdent :: IdentType -> Ident -> Doc
-formatIdent Forward   id = text (ident id) <> text "_forward"
-formatIdent Reverse   id = text (ident id) <> text "_reverse"
-formatIdent Value     id = text (ident id)
-formatIdent Reference id = text "&" <> text (ident id)
-formatIdent Pointer   id = text "*" <> text (ident id)
+formatIdent Forward     id = text (ident id) <> text "_forward"
+formatIdent Reverse     id = text (ident id) <> text "_reverse"
+formatIdent Value       id = text (ident id)
+formatIdent Reference   id = text "&" <> text (ident id)
+formatIdent (Pointer n) id = text (replicate n '*') <> text (ident id)
 
 formatLval :: Lval -> Doc
 formatLval (Var id) = formatIdent Value id
@@ -77,11 +78,11 @@ formatExpr = f 0
         f _ (Boolean True _)  = text "true"
         f _ (Boolean False _) = text "false"
         f _ (LV lval _)       = formatLval lval
-        -- f _ (Empty id _)      = text "empty" <> parens (formatIdent id)
-        -- f _ (Top id _)        = text "top" <> parens (formatIdent id)
-        -- f _ (Size id _)       = text "size" <> parens (formatIdent id)
-        -- f _ (ArrayE es _)     = text "{" <+> vcat (intersperse (text ",") (map formatExpr es)) $+$ text "}"
-        -- f _ (Nil _)           = text "nil"
+        f _ (Empty id _)      = error "Not supported in C traslation"
+        f _ (Top id _)        = error "Not supported in C traslation"
+        f _ (Size id _)       = error "Not supported in C traslation"
+        f _ (ArrayE es _)     = error "Not supported in C traslation"
+        f _ (Nil _)           = error "Not supported in C traslation"
         f d (UnaryOp op e)    =
           let opd = unaryOpPrec op in
             parens' (d > opd) (formatUnaryOp op <> f opd e)
@@ -94,7 +95,9 @@ formatExpr = f 0
 
 formatLocalDecl (LocalVar typ ident expr p)     = formatVdecl (Scalar typ ident (Just expr) p)
 formatLocalDecl (LocalArray ident iexprs expr p) = formatVdecl (Array ident iexprs (Just expr) p)
+
 formatAssertLocalDecl (LocalVar typ ident expr p) = formatStmt (Assert (BinOp EQ (LV (Var ident) p) expr) p)
+formatAssertLocalDecl (LocalArray ident iexprs expr p) = error "Not implemented"
 
 formatStmts :: [Stmt] -> Doc
 formatStmts = vcat . map formatStmt
@@ -109,14 +112,19 @@ formatStmt (If e1 s1 s2 e2 p) =
                  | otherwise = (text "else") `stmtWithBody` (formatStmts s2 $+$ formatStmt (Assert (UnaryOp Not e2) p))
 formatStmt (From e1 s1 s2 e2 p) =
   formatStmts ((Assert e1 p):s1) $+$
-  (text "while" <+> parens (formatExpr (UnaryOp Not e2))) `stmtWithBody` 
+  (text "while" <+> parens (formatExpr (UnaryOp Not e2))) `stmtWithBody`
     (formatStmts $ s2 ++ [(Assert (UnaryOp Not e1) p)] ++ s1)
 -- Implement with break to avoid code duplication of s1
 
--- formatStmt (Push id1 id2 _) =
---   text "push" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
--- formatStmt (Pop id1 id2 _) =
---   text "pop" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
+formatStmt (Iterate typ ident startE stepE endE stmts _) =
+  (text "for" <+>
+    parens (formatType typ <+> formatIdent Value ident <+> text "=" <+> formatExpr startE <+>
+      text ";" <+> formatIdent Value ident <+> text "!=" <+> formatExpr (BinOp Add endE stepE) <+>
+      text ";" <+> formatIdent Value ident <+> text "+=" <+> formatExpr stepE)) `stmtWithBody`
+    formatStmts stmts
+
+formatStmt (Push id1 id2 _) = error "Translation of push to C is not supported"
+formatStmt (Pop id1 id2 _) = error "Translation of push to C is not supported"
 formatStmt (Local decl1 s decl2 _) =
   formatLocalDecl decl1 $+$
   formatStmts s $+$
@@ -129,21 +137,20 @@ formatStmt (ExtCall id args _) =
   formatIdent Forward id <> parens (commasep $ map (formatIdent Value) args) <> semi
 formatStmt (ExtUncall id args _) =
   formatIdent Reverse id <> parens (commasep $ map (formatIdent Value) args) <> semi
-formatStmt (Swap id1 id2 p) = formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
+formatStmt (Swap id1 id2 p) =
+  formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
 formatStmt (UserError msg _) =
   text "printf" <> parens (text (show msg)) <> semi $+$ text "exit()" <> semi
--- formatStmt (Prints (Print str) _) =
---   text "print" <> parens (text (show str))
+formatStmt (Prints (Print str) _) = error "Not supported in C traslation"
 formatStmt (Prints (Printf str []) _) =
   text "printf" <> parens (text (show str)) <> semi
 formatStmt (Prints (Printf str idents) _) =
   text "printf" <> parens (text (show str) <> comma <+> commasep (map (formatIdent Value) idents)) <> semi
--- formatStmt (Prints (Show idents) _) =
---   text "show" <> parens (commasep $ map formatIdent idents)
--- formatStmt (Skip _) =
---   text "skip"
+formatStmt (Prints (Show idents) _) = error "Not supported in C traslation"
+formatStmt (Skip _) = empty
 formatStmt (Assert e _) =
   text "assert" <> parens (formatExpr e) <> semi
+formatStmt (Debug _ _) = error "Not supported in C traslation"
 
 -- Main procedure
 formatMain (ProcMain vdecls body p) =
@@ -154,7 +161,7 @@ formatMain (ProcMain vdecls body p) =
       text "return 1;")
 
 formatVdecl (Scalar typ id exp _) =
-  formatType typ <+> formatIdent Value id <+> formatExp exp <> semi 
+  formatType typ <+> formatIdent Value id <+> formatExp exp <> semi
   where
     formatExp (Just expr) = equals <+> formatExpr expr
     formatExp Nothing     = equals <+> integer 0
@@ -167,10 +174,10 @@ formatVdecl (Array id size a_exp p) =
 
 -- Local procedures
 formatProc proc =
-  (text "void" <+> formatIdent Forward (procname proc) <> 
+  (text "void" <+> formatIdent Forward (procname proc) <>
     parens (formatParams $ params proc)) `stmtWithBody`
       (formatStmts $ body proc) $+$
-    (text "void" <+> formatIdent Reverse (procname proc) <> 
+    (text "void" <+> formatIdent Reverse (procname proc) <>
     parens (formatParams $ params proc)) `stmtWithBody`
       (formatStmts $ invertStmts Locally $ body proc)
 
@@ -179,8 +186,8 @@ formatParam (Scalar typ id exp _) =
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
-formatParam (Array id _size a_exp p) =
-  formatType (Int p) <+> formatIdent Pointer id <> formatExp a_exp
+formatParam (Array id size a_exp p) =
+  formatType (Int p) <+> formatIdent (Pointer (length size)) id <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
@@ -188,10 +195,10 @@ formatParam (Array id _size a_exp p) =
 formatParams = commasep . map formatParam
 
 defineProc proc =
-  (text "void" <+> formatIdent Forward (procname proc) <> 
+  (text "void" <+> formatIdent Forward (procname proc) <>
     parens (formatParams $ params proc)) <> text ";"
       $+$
-    (text "void" <+> formatIdent Reverse (procname proc) <> 
+    (text "void" <+> formatIdent Reverse (procname proc) <>
     parens (formatParams $ params proc)) <> text ";"
 
 
@@ -199,16 +206,16 @@ defineProc proc =
 formatProgram headerfile (Program mains procs) =
   text "/* Translated from Janus program */" $+$
   text "#include <stdio.h>      /* printf */" $+$
-  text "#include <assert.h>" $+$ 
+  text "#include <assert.h>" $+$
   text include_header $+$
   text "" $+$
   vcat (intersperse (text "") $ map defineProc procs) $+$
   text "" $+$
   vcat (intersperse (text "") $ map formatProc procs) $+$
   text "" $+$
-  vcat (intersperse (text "") $ map formatMain mains)
+  maybe empty formatMain mains
   where
-    include_header = 
+    include_header =
       case headerfile of
         Nothing   -> ""
         (Just file) -> "#include \"" ++ file ++ "\""

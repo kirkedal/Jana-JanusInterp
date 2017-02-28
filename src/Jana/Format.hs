@@ -13,13 +13,14 @@ commasep = hsep . punctuate (char ',')
 
 formatType (Int _)   = text "int"
 formatType (Stack _) = text "stack"
+formatType (BoolT _) = text "bool"
 
 formatIdent :: Ident -> Doc
 formatIdent id = text (ident id)
 
 formatLval :: Lval -> Doc
 formatLval (Var id) = formatIdent id
-formatLval (Lookup id expr) = formatIdent id <> brackets (vcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
+formatLval (Lookup id expr) = formatIdent id <> brackets (hcat (intersperse (text ",") $ map (\e -> formatExpr e) expr))
 
 formatModOp AddEq = text "+="
 formatModOp SubEq = text "-="
@@ -123,6 +124,12 @@ formatStmt (From e1 s1 s2 e2 _) =
         loopPart | null s2   = [empty]
                  | otherwise = [text "loop", nest 4 (formatStmts s2)]
 
+formatStmt (Iterate  typ ident startE stepE endE stmts _) =
+  text "iterate" <+> formatType typ <+> formatIdent ident <+> text "=" <+> formatExpr startE <+>
+    text "by" <+> formatExpr stepE <+> text "until" <+> formatExpr endE $+$
+    nest 4 (formatStmts stmts) $+$
+    text "end"
+
 formatStmt (Push id1 id2 _) =
   text "push" <> parens (formatIdent id1 <> comma <+> formatIdent id2)
 
@@ -223,10 +230,10 @@ formatProc proc =
     nest 4 (formatStmts $ body proc)
 
 
-formatProgram (Program [main] procs) =
+formatProgram (Program main procs) =
   vcat (intersperse (text "") $ map formatProc procs) $+$
   text "" $+$
-  formatMain main
+  maybe empty formatMain main
 
 
 

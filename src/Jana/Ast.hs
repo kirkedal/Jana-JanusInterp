@@ -65,6 +65,7 @@ data Stmt
     = Assign    ModOp Lval Expr SourcePos
     | If        Expr [Stmt] [Stmt] Expr SourcePos
     | From      Expr [Stmt] [Stmt] Expr SourcePos
+    | Iterate   Type Ident Expr Expr Expr [Stmt] SourcePos
     | Push      Ident Ident SourcePos
     | Pop       Ident Ident SourcePos
     | Local     LocalDecl [Stmt] LocalDecl SourcePos
@@ -125,7 +126,7 @@ data Proc
            }
     deriving (Eq)
 
-data Program = Program [ProcMain] [Proc]
+data Program = Program (Maybe ProcMain) [Proc]
 
 
 class Identifiable a where
@@ -153,11 +154,14 @@ stmtPos :: Stmt -> SourcePos
 stmtPos (Assign    _ _ _   p) = p
 stmtPos (If        _ _ _ _ p) = p
 stmtPos (From      _ _ _ _ p) = p
+stmtPos (Iterate   _ _ _ _ _ _ p) = p
 stmtPos (Push      _ _     p) = p
 stmtPos (Pop       _ _     p) = p
 stmtPos (Local     _ _ _   p) = p
 stmtPos (Call      _ _     p) = p
 stmtPos (Uncall    _ _     p) = p
+stmtPos (ExtCall   _ _     p) = p
+stmtPos (ExtUncall _ _     p) = p
 stmtPos (UserError _       p) = p
 stmtPos (Swap      _ _     p) = p
 stmtPos (Prints    _       p) = p

@@ -4,7 +4,7 @@ import Jana.Ast
 
 injectDBProgram :: Program -> Program
 injectDBProgram (Program mains procs) =
-  Program (map injectDBProcMain mains) (map injectDBProc procs)
+  Program (fmap injectDBProcMain mains) (map injectDBProc procs)
 
 
 injectDBProcMain :: ProcMain -> ProcMain
@@ -14,6 +14,7 @@ injectDBProcMain (ProcMain vdecls stmts sourcePos) =
     injStmts = injectDBStmts stmts
     debugStmts = ((changeDebug $ head injStmts):(tail $ injectDBStmts stmts)) ++ [Debug End (stmtPos $ last stmts)]
     changeDebug (Debug _ pos) = Debug Beginning pos
+    changeDebug s = s
 
 
 injectDBProc :: Proc -> Proc
