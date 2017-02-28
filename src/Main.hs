@@ -4,6 +4,7 @@ import System.Exit
 import System.Timeout
 import Control.Monad
 import Data.List
+import Math.NumberTheory.Primes.Testing (isPrime)
 
 -- import Jana.ParserBasic
 import Jana.Parser
@@ -32,7 +33,7 @@ usage :: String
 usage = "usage: jana [options] <file>\n\
         \options:\n\
         \  -m[n]        use n-bit modular arithmetic; if (n) is unset 32 is used\n\
-        \  -p[n]        use GF(n) finite field arithmetic; if (n) is unset M_7 (127) is used\n\
+        \  -p[n]        use GF(n) finite field arithmetic; if (n) is unset M_31 (2147483647) is used\n\
         \  -tN          timeout after N seconds\n\
         \  -i           print inverted program\n\
         \  -c           print C++ program\n\
@@ -62,17 +63,20 @@ addOption opts@(Options { evalOpts = evalOptions }) "-m" =
 addOption opts@(Options { evalOpts = evalOptions }) ('-':'m':n) =
   case reads n of
     [(nVal, "")] -> return $ opts { evalOpts = evalOptions { modInt = (ModPow2 nVal) } }
-    _               -> Left "non-number given to -m option"
+    _               -> Left "Non-number given to -m option"
 addOption opts@(Options { evalOpts = evalOptions }) "-p" =
-  return $ opts { evalOpts = evalOptions { modInt = (ModPrime $ 2^7-1) } }
+  return $ opts { evalOpts = evalOptions { modInt = (ModPrime $ 2^31-1) } }
 addOption opts@(Options { evalOpts = evalOptions }) ('-':'p':n) =
   case reads n of
-    [(nVal, "")] -> return $ opts { evalOpts = evalOptions { modInt = (ModPrime nVal) } }
-    _               -> Left "non-number given to -p option"
+    [(nVal, "")] ->
+      case isPrime $ toInteger nVal of
+        True -> return $ opts { evalOpts = evalOptions { modInt = (ModPrime nVal) } }
+        False -> Left "Non-prime given to -p option"
+    _            -> Left "Non-number given to -p option"
 addOption opts ('-':'t':time) =
   case reads time of
     [(timeVal, "")] -> return $ opts { timeOut = timeVal }
-    _               -> Left "non-number given to -t option"
+    _               -> Left "Non-number given to -t option"
 addOption opts "-i" = return opts { invert = True }
 addOption opts "-c" = return opts { cCode = True }
 addOption opts ('-':'h':'=':headerfile) = return opts { header = Just headerfile }

@@ -28,6 +28,7 @@ import Control.Monad.Except
 import Text.Printf (printf)
 import qualified Data.Maybe as Maybe
 import qualified Data.Map as Map
+import Math.NumberTheory.GCD (extendedGCD)
 
 import Text.Parsec.Pos
 
@@ -127,8 +128,10 @@ performOperation Div (JInt _) (JInt 0) _ pos =
 performOperation Div (JInt x) (JInt y) _ pos =
   do flag <- asks (modInt . evalOptions)
      case flag of
-       (ModPrime n) -> return $ opFunc Mul x (y^(n-2))
+       (ModPrime n) -> return $ opFunc Mul x (multInv y n)
        _ -> return $ opFunc Div x y
+  where
+    multInv a p = (\(_,i,_) -> i) $ extendedGCD a (toInteger p)
 performOperation op (JInt x) (JInt y) _ _ =
   return $ opFunc op x y
 performOperation _ (JInt _) val _ pos =

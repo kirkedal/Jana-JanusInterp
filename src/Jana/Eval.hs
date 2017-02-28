@@ -153,7 +153,7 @@ runProgram filename (Program Nothing _) _ =
 runProgramAfterDBcheck :: Program -> EvalOptions -> IO ()
 runProgramAfterDBcheck (Program (Just main) procs) evalOptions =
   case procEnvFromList procs of
-    Left err -> print err
+    Left err -> print err >> exitWith (ExitFailure 1)
     Right procEnv ->
       let env = EE { procEnv = procEnv
                    , evalOptions = evalOptions
