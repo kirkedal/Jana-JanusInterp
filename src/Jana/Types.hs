@@ -17,6 +17,7 @@ module Jana.Types (
     isForwardExecution, whenForwardExecutionElse, isUserForwardExecution,
     ) where
 
+import Control.Applicative
 import Prelude hiding (GT, LT, EQ)
 import Data.Bits
 import Data.List (intercalate, genericSplitAt)
