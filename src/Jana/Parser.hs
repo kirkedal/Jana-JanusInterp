@@ -446,7 +446,9 @@ sizeExpr = reserved "size" >> liftM Size (parens identifier)
 binOperators :: [[Operator String Int Identity Expr]]
 binOperators = [ [ notChain
                  ]
-               , [ binop  "*"   Mul
+               , [ binop  "**"  Exp
+                 ]
+               , [ binop' "*"   Mul '*'
                  , binop  "/"   Div
                  , binop  "%"   Mod
                  ]

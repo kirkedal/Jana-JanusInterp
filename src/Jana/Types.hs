@@ -108,6 +108,7 @@ opFunc :: BinOp -> Integer -> Integer -> Value
 opFunc Add  = wrap JInt (+)
 opFunc Sub  = wrap JInt (-)
 opFunc Mul  = wrap JInt (*)
+opFunc Exp  = wrap JInt (^)
 opFunc Div  = wrap JInt div
 opFunc Mod  = wrap JInt mod
 opFunc And  = wrap JInt (.&.)

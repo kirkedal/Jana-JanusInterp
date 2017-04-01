@@ -35,6 +35,7 @@ binOpMap = Map.fromList [
     (Mul , ("*",  4))
   , (Div , ("/",  4))
   , (Mod , ("%",  4))
+  , (Exp , ("**", 4))
 
   , (Add , ("+",  3))
   , (Sub , ("-",  3))
