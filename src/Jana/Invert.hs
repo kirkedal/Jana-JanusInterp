@@ -38,8 +38,8 @@ invertStmt mode (From e1 doPart loopPart e2 pos) =
 --       (stmts++[Assign AddEq (Var ident) stepE pos])
 --       (BinOp EQ (LV (Var ident) pos) endE) pos]
 --     (LocalVar typ ident endE pos) pos)
-invertStmt mode (Iterate typ ident startE stepE endE stmts pos) =
-  Iterate typ ident
+invertStmt mode (Iterate typ idnt startE stepE endE stmts pos) =
+  Iterate typ idnt
     endE
     (BinOp Sub (Number 0 pos) stepE)
     startE
@@ -47,8 +47,8 @@ invertStmt mode (Iterate typ ident startE stepE endE stmts pos) =
     pos
 invertStmt _ (Push id1 id2 pos) = Pop  id1 id2 pos
 invertStmt _ (Pop  id1 id2 pos) = Push id1 id2 pos
-invertStmt mode (Local assign1 body assign2 pos) =
-  Local assign2 (invertStmts mode body) assign1 pos
+invertStmt mode (Local assign1 localbody assign2 pos) =
+  Local assign2 (invertStmts mode localbody) assign1 pos
 invertStmt Locally (Call funId args pos) =
   Uncall funId args pos
 invertStmt Locally (Uncall funId args pos) =

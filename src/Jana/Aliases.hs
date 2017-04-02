@@ -5,30 +5,27 @@ module Jana.Aliases (
   isAlias
   ) where
 
-import Data.Maybe (catMaybes)
 import qualified Data.Set as Set
-
-import Jana.Ast
-
 
 type AliasSet = Set.Set (String, String)
 
 empty :: AliasSet
 empty = Set.empty
 
+uniquePairs :: [a] -> [(a, a)]
 uniquePairs [] = []
 uniquePairs (x:xs) = [ (x, y) | y <- xs ] ++ uniquePairs xs
 
 introduce :: [(String, String)] -> AliasSet
-introduce xs =
-  findDuplicates (uniquePairs xs)
+introduce list =
+  findDuplicates (uniquePairs list)
   where findDuplicates [] = empty
         findDuplicates (((x, x'), (y, y')):xs) =
           (if x == y then Set.insert (x', y') else id) $ findDuplicates xs
 
 propagate :: [(String, String)] -> AliasSet -> AliasSet
-propagate xs aliases = Set.foldr b empty aliases
-  where b (x, y) ys = Set.fromList [ (a, b) | (x', a) <- xs
+propagate xs aliases = Set.foldr bindings empty aliases
+  where bindings (x, y) ys = Set.fromList [ (a, b) | (x', a) <- xs
                                             , (y', b) <- xs
                                             , x == x' && y == y' ]
                       `Set.union` ys

@@ -1,6 +1,5 @@
 module Jana.ErrorMessages where
 
-import Control.Monad.Except
 import Text.Printf
 import Data.List (intercalate)
 
@@ -26,12 +25,13 @@ typeError = Message
 typeMismatch :: [String] -> String -> Message
 typeMismatch expTypes actualType = Message $
   printf "Couldn't match expected type %s\n\
-         \            with actual type `%s'" (join expTypes) actualType
-  where join []     = ""
-        join [x]    = quote x
-        join [x, y] = quote x ++ " or " ++ quote y
-        join (x:xs) = quote x ++ ", " ++ join xs
-        quote s = "`" ++ s ++ "'"
+         \            with actual type `%s'" (joinE expTypes) actualType
+  where
+    joinE []     = ""
+    joinE [x]    = quote x
+    joinE [x, y] = quote x ++ " or " ++ quote y
+    joinE (x:xs) = quote x ++ ", " ++ joinE xs
+    quote s = "`" ++ s ++ "'"
 
 swapTypeError :: String -> String -> Message
 swapTypeError typ1 typ2 = Message $
@@ -48,8 +48,8 @@ emptyStack :: Message
 emptyStack = Message "Can't pop from empty stack"
 
 popToNonZero :: Ident -> Message
-popToNonZero id = Message $
-  printf "Can't pop to non-zero variable `%s'" (ident id)
+popToNonZero idnt = Message $
+  printf "Can't pop to non-zero variable `%s'" (ident idnt)
 
 assertionFail :: String -> Message
 assertionFail s = Message $
@@ -64,46 +64,46 @@ delocalNameMismatch id1 id2 = Message $
          (ident id1) (ident id2)
 
 delocalTypeMismatch :: Ident -> String -> String -> Message
-delocalTypeMismatch id locType delocType = Message $
+delocalTypeMismatch idnt locType delocType = Message $
   printf "Type of variable `%s' does not match local declaration:\n\
          \    `%s' in `local'\n\
          \    `%s' in `delocal'"
-         (ident id) locType delocType
+         (ident idnt) locType delocType
 
 wrongDelocalValue :: Ident -> String -> String -> Message
-wrongDelocalValue id expect actual = Message $
+wrongDelocalValue idnt expect actual = Message $
   printf "Expected value to be `%s' for local variable `%s'\n\
          \ but actual value is `%s'"
-         expect (ident id) actual
+         expect (ident idnt) actual
 
 undefProc :: String -> Message
 undefProc name = Message $
   printf "Procedure `%s' is not defined" name
 
 procDefined :: (Identifiable a) => a -> Message
-procDefined id = Message $
-  printf "Procedure `%s' is already defined" (ident id)
+procDefined idnt = Message $
+  printf "Procedure `%s' is already defined" (ident idnt)
 
 callingMainError :: Message
 callingMainError = Message "It is not allowed to call the `main' procedure"
 
 argumentError :: (Identifiable a, PrintfArg b) => a -> b -> b -> Message
-argumentError id expect actual = Message $
+argumentError idnt expect actual = Message $
   printf "Procedure `%s' expects %d argument(s) but got %d"
-         (ident id) expect actual
+         (ident idnt) expect actual
 
 arraySize :: Message
 arraySize = Message $ "Array size must be greater than or equal to one"
 
 arraySizeMissing :: Ident -> Message
-arraySizeMissing id = Message $
-  printf "Array size missing for variable `%s'" (ident id)
+arraySizeMissing idnt = Message $
+  printf "Array size missing for variable `%s'" (ident idnt)
 
 arraySizeMismatch :: (PrintfArg a, PrintfArg b) => a -> b -> Message
-arraySizeMismatch exp actual = Message $
+arraySizeMismatch expr actual = Message $
   printf "Expecting array of size %d\n\
          \           but got size %d"
-         exp actual
+         expr actual
 
 divisionByZero :: Message
 divisionByZero = Message "Division by zero"
@@ -115,8 +115,8 @@ multipleMainProcs :: Message
 multipleMainProcs = Message "Multiple main procedures has been defined"
 
 procDuplicateArgs :: Proc -> Message
-procDuplicateArgs id = Message $
-  printf "Procedure `%s' has duplicate arguments" (ident id)
+procDuplicateArgs idnt = Message $
+  printf "Procedure `%s' has duplicate arguments" (ident idnt)
 
 userError :: String -> Message
 userError msg = Message $ "User error: " ++ msg

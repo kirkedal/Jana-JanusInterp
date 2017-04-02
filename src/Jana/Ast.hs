@@ -76,6 +76,8 @@ data Stmt
     | UserError String SourcePos
     | Swap      Lval Lval SourcePos
     | Prints    Prints SourcePos
+    -- | ShowVar   Ident SourcePos
+    -- | ReadVar   Ident SourcePos
     | Skip      SourcePos
     | Assert    Expr SourcePos
     | Debug     DebugType SourcePos

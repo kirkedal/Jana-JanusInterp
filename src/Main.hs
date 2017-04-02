@@ -65,7 +65,7 @@ addOption opts@(Options { evalOpts = evalOptions }) ('-':'m':n) =
     [(nVal, "")] -> return $ opts { evalOpts = evalOptions { modInt = (ModPow2 nVal) } }
     _               -> Left "Non-number given to -m option"
 addOption opts@(Options { evalOpts = evalOptions }) "-p" =
-  return $ opts { evalOpts = evalOptions { modInt = (ModPrime $ 2^31-1) } }
+  return $ opts { evalOpts = evalOptions { modInt = (ModPrime 2147483647) } }
 addOption opts@(Options { evalOpts = evalOptions }) ('-':'p':n) =
   case reads n of
     [(nVal, "")] ->

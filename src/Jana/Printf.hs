@@ -31,10 +31,9 @@ printfRender str vList@((var, varType):vars) =
     Nothing  -> if null vList
                   then Right $ concat str
                   else Left printfTooManyArgs
-  where percentIndex = findPercent (last str)
-        insertVar :: String -> String -> String
-        insertVar var str =
-          take (length str - 2) str ++  var
+  where
+    percentIndex = findPercent (last str)
+    insertVar v s = take (length s - 2) s ++ v
 
 correspondingType :: Char -> String
 correspondingType typeChar =

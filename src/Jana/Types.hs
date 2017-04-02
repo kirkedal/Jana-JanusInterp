@@ -14,7 +14,7 @@ module Jana.Types (
     checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, 
     whenDebuggingElse, doWhenDebugging, whenFirstBreak, whenFullDebugging, isErrorDebugging,
     executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, 
-    isForwardExecution, whenForwardExecutionElse, isUserForwardExecution,
+    isForwardExecution, whenForwardExecutionElse, isUserForwardExecution, doWhenForwardExecution
     ) where
 
 import Control.Applicative
@@ -27,7 +27,6 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 import Text.Printf (printf)
-import qualified Data.Maybe as Maybe
 import qualified Data.Map as Map
 import Math.NumberTheory.GCD (extendedGCD)
 
@@ -90,6 +89,7 @@ typesMatch (JStack _) (JStack _) = True
 typesMatch (JBool _)  (JBool _)  = True
 typesMatch _          _          = False
 
+nil :: Value
 nil = JStack []
 
 truthy :: Value -> Bool
@@ -97,9 +97,8 @@ truthy (JInt 0)    = False
 truthy (JStack []) = False
 truthy _           = True
 
-
-boolToInt :: Num a => (a -> a -> Bool) -> a -> a -> a
-boolToInt f x y = if f x y then 1 else 0
+-- boolToInt :: Num a => (a -> a -> Bool) -> a -> a -> a
+-- boolToInt f x y = if f x y then 1 else 0
 
 wrap :: (a -> Value) -> (Integer -> Integer -> a) -> Integer -> Integer -> Value
 wrap m f x y = m $ f x y
@@ -126,7 +125,7 @@ opFunc LE   = wrap JBool (<=)
 performOperation :: BinOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
 performOperation Div (JInt _) (JInt 0) _ pos =
   pos <!!> divisionByZero
-performOperation Div (JInt x) (JInt y) _ pos =
+performOperation Div (JInt x) (JInt y) _ _ =
   do flag <- asks (modInt . evalOptions)
      case flag of
        (ModPrime n) -> return $ opFunc Mul x (multInv y n)
@@ -156,7 +155,7 @@ data EvalState = ES { breakPoints :: BreakPoints
                     , firstDBbeginning :: Bool
                     , store :: Store}
 
-
+emptyStore :: EvalState
 emptyStore = ES { breakPoints = Set.empty,
                   userForwardExecution = True, 
                   forwardExecution = True, 
@@ -184,8 +183,8 @@ checkLine l p =
 
 checkForBreak :: SourcePos -> Eval Bool
 checkForBreak s =
-  do evalState <- get
-     return $ Set.member (sourceLine s) (breakPoints evalState)
+  do evalS <- get
+     return $ Set.member (sourceLine s) (breakPoints evalS)
 
 removeBreakPoint :: Line -> Eval ()
 removeBreakPoint l = 
@@ -252,16 +251,16 @@ type Store = Map.Map String (IORef Value)
 
 getStore :: Eval Store
 getStore =
-  do evalState <- get
-     return $ store evalState
+  do evalS <- get
+     return $ store evalS
 
 putStore :: Store -> Eval()
 putStore s =
-  do evalState <- get
-     put $ evalState {store = s}
+  do evalS <- get
+     put $ evalS {store = s}
 
 printVdecl :: String -> Value -> String
-printVdecl name val@(JArray i xs) = printf "%s%s = %s" name (concatMap (\x -> "["++ show x ++ "]") i) (show val)
+printVdecl name val@(JArray i _) = printf "%s%s = %s" name (concatMap (\x -> "["++ show x ++ "]") i) (show val)
 printVdecl name val = printf "%s = %s" name (show val)
 
 showStore :: EvalState -> IO String
@@ -275,14 +274,14 @@ storeFromList = Map.fromList
 
 getRef :: Ident -> Eval (IORef Value)
 getRef (Ident name pos) =
-  do evalState <- get
-     let storeEnv = store evalState
+  do evalS <- get
+     let storeEnv = store evalS
      case Map.lookup name storeEnv of
        Just ref -> return ref
        Nothing  -> pos <!!> unboundVar name
 
 getVar :: Ident -> Eval Value
-getVar id = getRef id >>= liftIO . readIORef
+getVar idnt = getRef idnt >>= liftIO . readIORef
 
 getRefValue :: IORef Value -> Eval Value
 getRefValue = liftIO . readIORef
@@ -290,23 +289,23 @@ getRefValue = liftIO . readIORef
 -- Bind a variable name to a new reference
 bindVar :: Ident -> Value -> Eval ()
 bindVar (Ident name pos) val =
-  do evalState <- get
-     let storeEnv = store evalState
+  do evalS <- get
+     let storeEnv = store evalS
      ref <- liftIO $ newIORef val
      case Map.lookup name storeEnv of
-       Nothing  -> put $ evalState {store = Map.insert name ref storeEnv}
+       Nothing  -> put $ evalS {store = Map.insert name ref storeEnv}
        Just _   -> pos <!!> alreadyBound name
 
 unbindVar :: Ident -> Eval ()
-unbindVar i = 
-  do evalState <- get
-     let storeEnv = store evalState
-     put $ evalState {store = Map.delete (ident i) storeEnv}
+unbindVar i =
+  do evalS <- get
+     let storeEnv = store evalS
+     put $ evalS {store = Map.delete (ident i) storeEnv}
 
 -- Set the value of a variable (modifying the reference)
 setVar :: Ident -> Value -> Eval ()
-setVar id val =
-  do ref <- getRef id
+setVar idnt val =
+  do ref <- getRef idnt
      liftIO $ writeIORef ref val
 
 
@@ -320,6 +319,8 @@ data ModEval = None | ModPow2 Int | ModPrime Int
   deriving (Eq)
 
 data EvalOptions = EvalOptions { modInt :: ModEval, runReverse :: Bool, runDebugger :: DebugMode}
+
+defaultOptions :: EvalOptions
 defaultOptions   = EvalOptions { modInt = None, runReverse = False, runDebugger = DebugOff }
 
 data DebugMode = DebugOff | DebugOn | DebugError
@@ -327,6 +328,7 @@ data DebugMode = DebugOff | DebugOn | DebugError
 
 type ProcEnv = Map.Map String Proc
 
+emptyProcEnv :: Map.Map k a
 emptyProcEnv = Map.empty
 
 procEnvFromList :: [Proc] -> Either JanaError ProcEnv
@@ -339,22 +341,22 @@ procEnvFromList = foldM insertProc emptyProcEnv
         ppos  Proc { procname = (Ident _ pos) } = pos
 
 makeIdentList :: Proc -> [Ident]
-makeIdentList (Proc {params = params}) = map getVdeclIdent params
+makeIdentList (Proc {params = p}) = map getVdeclIdent p
   where
-    getVdeclIdent (Scalar _ id _ _) = id
-    getVdeclIdent (Array id _ _ _)  = id
+    getVdeclIdent (Scalar _ idnt _ _) = idnt
+    getVdeclIdent (Array idnt _ _ _)  = idnt
 
 checkDuplicateArgs :: [Ident] -> Bool
 checkDuplicateArgs []         = True
-checkDuplicateArgs ([arg])    = True
+checkDuplicateArgs ([_])    = True
 checkDuplicateArgs (arg:args) =
   arg `notElem` args && checkDuplicateArgs args
 
 getProc :: Ident -> Eval Proc
 getProc (Ident funName pos) =
   do when (funName == "main") $ pos <!!> callingMainError
-     procEnv <- asks procEnv
-     case Map.lookup funName procEnv of
+     procE <- asks procEnv
+     case Map.lookup funName procE of
        Just proc -> return proc
        Nothing   -> pos <!!> undefProc funName
 
@@ -408,10 +410,11 @@ newtype Eval a = E { runE :: StateT EvalState (ReaderT EvalEnv (ExceptT JanaErro
                deriving (Applicative, Functor, Monad, MonadIO, MonadError JanaError, MonadReader EvalEnv, MonadState EvalState)
 
 runEval :: Eval a -> EvalState -> EvalEnv -> IO (Either JanaError (a, EvalState))
-runEval eval evalState procs = runExceptT (runReaderT (runStateT (runE eval) evalState) procs)
+runEval eval eState procs = runExceptT (runReaderT (runStateT (runE eval) eState) procs)
 
 throwJanaError :: SourcePos -> Message -> Eval a
 throwJanaError pos msg = throwError $ newErrorMessage pos msg
 
+(<!!>) :: SourcePos -> Message -> Eval a
 infixr 1 <!!>
 pos <!!> msg = throwJanaError pos msg
