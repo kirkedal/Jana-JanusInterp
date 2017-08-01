@@ -153,6 +153,7 @@ mainvdecl =
      case mytype of
        (Int _) -> liftM2 (\x y -> (Array idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
               <|> liftM (\x -> (Scalar mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
+       (Stack _) -> liftM (\e -> (StackD idnt e pos)) (optionMaybe $ reservedOp "=" >> array)
        _       -> return $ (Scalar mytype idnt Nothing pos)
 
 procedure :: Ident -> Parser Proc

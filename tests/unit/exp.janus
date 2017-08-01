@@ -1,0 +1,9 @@
+procedure main()
+  int x
+
+  x ^= 2 ** 3
+  assert(x=8)
+  x ^= 8
+
+  x ^= 2 * 2**3
+  assert(x=16)

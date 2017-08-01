@@ -94,6 +94,11 @@ formatVdecl (Array id size a_exp _) =
         formatExp (Just ex) = equals $+$ formatExpr ex
         formatExp Nothing   = empty
 
+formatVdecl (StackD id a_exp _) =
+  text "stack" <+> formatIdent id <> formatExp a_exp
+  where formatExp (Just ex) = equals $+$ formatExpr ex
+        formatExp Nothing   = empty
+
 
 formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent ident <+> equals <+> formatExpr expr
 formatLocalDecl (LocalArray ident iexprs expr p) = formatType (Int p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ equals <+> 

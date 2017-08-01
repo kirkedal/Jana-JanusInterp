@@ -101,10 +101,12 @@ checkVdecl (Array _ sizeExpr _ pos) (JArray size _) =
      -- valInt <- checkTypeInt pos val
      -- unless (valInt == arrLen) $ pos <!!> arraySizeMismatch valInt arrLen
   -- where arrLen = toInteger (length arr)
+checkVdecl (StackD _ _ _)   (JStack _) = return ()
 checkVdecl vdecl val =
   vdeclPos vdecl <!!> typeMismatch [vdeclType vdecl] (showValueType val)
   where vdeclPos (Scalar _ _ _ pos) = pos
         vdeclPos (Array _ _ _ pos)  = pos
+        vdeclPos (StackD _ _ pos)   = pos
         vdeclType (Scalar Int{} _ _ _)   = "int"
         vdeclType (Scalar BoolT{} _ _ _) = "bool"
         vdeclType (Scalar Stack{} _ _ _) = "stack"
@@ -223,7 +225,12 @@ evalMain (ProcMain vdecls mainbody _) =
          vals  <- mapM evalModularExpr exprs
          valsI <- mapM (checkTypeInt pos) vals
          bindVar idnt $ JArray sizeInt valsI
-
+    initBinding (StackD idnt Nothing pos) = bindVar idnt nil
+    initBinding (StackD idnt (Just (Nil _)) pos) = bindVar idnt $ JStack []
+    initBinding (StackD idnt (Just (ArrayE exprs _)) pos) =
+      do vals  <- mapM evalModularExpr exprs
+         valsI <- mapM (checkTypeInt pos) vals
+         bindVar idnt $ JStack valsI
 
 evalProc :: Proc -> [Ident] -> Eval ()
 evalProc proc args = inProcedure proc $

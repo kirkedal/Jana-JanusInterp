@@ -1,0 +1,4 @@
+procedure main()
+  stack stk = {1,2,3}
+
+  show(stk)

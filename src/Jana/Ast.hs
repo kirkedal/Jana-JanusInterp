@@ -107,6 +107,7 @@ data Expr
 data Vdecl
     = Scalar Type Ident (Maybe Expr) SourcePos 
     | Array  Ident [Maybe Expr] (Maybe Expr) SourcePos
+    | StackD Ident (Maybe Expr) SourcePos
     deriving (Eq)
 
 data Prints
