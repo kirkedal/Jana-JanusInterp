@@ -11,9 +11,9 @@ module Jana.Types (
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
     Eval, runEval, (<!!>),
     BreakPoints, checkLine, EvalState, ModEval(..),
-    checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging, 
+    checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging,
     whenDebuggingElse, doWhenDebugging, whenFirstBreak, whenFullDebugging, isErrorDebugging,
-    executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution, 
+    executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution,
     isForwardExecution, whenForwardExecutionElse, isUserForwardExecution, doWhenForwardExecution
     ) where
 
@@ -69,7 +69,7 @@ partitionInto s n = go n
 
 findIndex :: Index -> Index -> Maybe Integer
 findIndex []       []       = Just 0
-findIndex (iA:iAs) (iC:iCs) 
+findIndex (iA:iAs) (iC:iCs)
   | and [iA > iC, iC >= 0]  = (\x -> return $ product (iC:iAs) + x) =<< findIndex iAs iCs
   | otherwise               = Nothing
 findIndex _        _        = Nothing
@@ -82,7 +82,7 @@ showValueType (JBool _)  = "bool"
 
 typesMatch :: Value -> Value -> Bool
 typesMatch (JInt _)   (JInt _)   = True
-typesMatch (JArray i1 _) (JArray i2 _) 
+typesMatch (JArray i1 _) (JArray i2 _)
   | i1 == i2  = True
   | otherwise = False
 typesMatch (JStack _) (JStack _) = True
@@ -96,9 +96,6 @@ truthy :: Value -> Bool
 truthy (JInt 0)    = False
 truthy (JStack []) = False
 truthy _           = True
-
--- boolToInt :: Num a => (a -> a -> Bool) -> a -> a -> a
--- boolToInt f x y = if f x y then 1 else 0
 
 wrap :: (a -> Value) -> (Integer -> Integer -> a) -> Integer -> Integer -> Value
 wrap m f x y = m $ f x y
@@ -158,9 +155,9 @@ data EvalState = ES { breakPoints :: BreakPoints
 
 emptyStore :: EvalState
 emptyStore = ES { breakPoints = Set.empty,
-                  userForwardExecution = True, 
-                  forwardExecution = True, 
-                  firstDBbeginning = True, 
+                  userForwardExecution = True,
+                  forwardExecution = True,
+                  firstDBbeginning = True,
                   store = Map.empty}
 
 -- Break points
@@ -169,10 +166,10 @@ type BreakPoints = Set.Set Line
 
 whenFirstBreak :: Eval () -> Eval () -> Eval ()
 whenFirstBreak op1 op2 =
-  do 
+  do
     env <- get
     if firstDBbeginning env
-      then 
+      then
         do modify $ \x -> x {firstDBbeginning = False}
            op1
       else op2
@@ -188,11 +185,11 @@ checkForBreak s =
      return $ Set.member (sourceLine s) (breakPoints evalS)
 
 removeBreakPoint :: Line -> Eval ()
-removeBreakPoint l = 
+removeBreakPoint l =
   modify $ \x -> x {breakPoints = Set.delete l (breakPoints x)}
 
 addBreakPoint :: Line -> Eval ()
-addBreakPoint l = 
+addBreakPoint l =
   modify $ \x -> x {breakPoints = Set.insert l (breakPoints x)}
 
 executeForward :: Eval ()
@@ -204,12 +201,12 @@ executeBackward =
   modify $ \x -> x {userForwardExecution = False, forwardExecution = not (userForwardExecution x)}
 
 isForwardExecution :: Eval Bool
-isForwardExecution = 
+isForwardExecution =
   do env <- get
      return $ forwardExecution env
 
 isUserForwardExecution :: Eval Bool
-isUserForwardExecution = 
+isUserForwardExecution =
   do env <- get
      return $ userForwardExecution env
 
@@ -399,7 +396,7 @@ whenDebugging op =
 whenDebuggingElse :: Eval () -> Eval () -> Eval ()
 whenDebuggingElse op1 op2 =
   do db <- isDebuggerRunning
-     if db 
+     if db
        then op1
        else op2
 
