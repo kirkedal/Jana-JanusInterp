@@ -85,11 +85,11 @@ formatExpr = f 0
         f _ (Boolean True _)  = text "true"
         f _ (Boolean False _) = text "false"
         f _ (LV lval _)       = formatLval lval
-        f _ (Empty _ _)      = error "Not supported in C traslation"
-        f _ (Top _ _)        = error "Not supported in C traslation"
-        f _ (Size _ _)       = error "Not supported in C traslation"
-        f _ (ArrayE _ _)     = error "Not supported in C traslation"
-        f _ (Nil _)           = error "Not supported in C traslation"
+        f _ (Empty _ _)      = error "Not supported in C++ traslation"
+        f _ (Top _ _)        = error "Not supported in C++ traslation"
+        f _ (Size _ _)       = error "Not supported in C++ traslation"
+        f _ (ArrayE _ _)     = error "Not supported in C++ traslation"
+        f _ (Nil _)           = error "Not supported in C++ traslation"
         f d (UnaryOp op e)    =
           let opd = unaryOpPrec op in
             parens' (d > opd) (formatUnaryOp op <> f opd e)
@@ -150,16 +150,16 @@ formatStmt (Swap id1 id2 p) =
   formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
 formatStmt (UserError msg _) =
   text "printf" <> parens (text (show msg)) <> semi $+$ text "exit()" <> semi
-formatStmt (Prints (Print _) _) = error "Not supported in C traslation"
+formatStmt (Prints (Print _) _) = error "Not supported in C++ traslation"
 formatStmt (Prints (Printf str []) _) =
   text "printf" <> parens (text (show str)) <> semi
 formatStmt (Prints (Printf str idents) _) =
   text "printf" <> parens (text (show str) <> comma <+> commasep (map (formatIdent Value) idents)) <> semi
-formatStmt (Prints (Show _) _) = error "Not supported in C traslation"
+formatStmt (Prints (Show _) _) = error "Not supported in C++ traslation"
 formatStmt (Skip _) = empty
 formatStmt (Assert e _) =
   text "assert" <> parens (formatExpr e) <> semi
-formatStmt (Debug _ _) = error "Not supported in C traslation"
+formatStmt (Debug _ _) = error "Not supported in C++ traslation"
 
 -- Main procedure
 formatMain :: ProcMain -> Doc
