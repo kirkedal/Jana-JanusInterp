@@ -153,7 +153,7 @@ mainvdecl =
      case mytype of
        (Int _) -> liftM2 (\x y -> (Array idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
               <|> liftM (\x -> (Scalar mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
-       (Stack _) -> liftM (\e -> (StackD idnt e pos)) (optionMaybe $ reservedOp "=" >> array)
+       (Stack _) -> liftM (\e -> (StackD idnt e pos)) (optionMaybe $ reservedOp "=" >> stack)
        _       -> return $ (Scalar mytype idnt Nothing pos)
 
 procedure :: Ident -> Parser Proc
@@ -417,6 +417,10 @@ array = liftM2 ArrayE (braces $ sepBy1 array comma) getPosition
     <|> expression
 -- array = try $ liftM2 ArrayE (braces $ sepBy1 array comma) getPosition
 --     <|> liftM2 ArrayE (braces $ sepBy1 expression comma) getPosition
+
+stack :: Parser Expr
+stack = liftM2 ArrayE (between (symbol "<") (symbol "}") $ sepBy1 array comma) getPosition
+    <|> expression
 
 lval ::  Parser Lval
 lval =
