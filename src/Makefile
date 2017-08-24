@@ -9,7 +9,7 @@ main: $(FILES)
 	ghc --make Main.hs
 
 optimized, opt: $(FILES)
-	ghc -O2 -rtsopts --make Main.hs
+	ghc -o janus -O2 -rtsopts --make Main.hs
 
 haddock, h: $(FILES)
 	haddock -h -o ../docs/ Main.hs
