@@ -1,4 +1,4 @@
-FILES=Main.hs RevTM.hs Jana/*.hs
+FILES=Main.hs Jana/*.hs
 
 all: main
 
@@ -9,7 +9,7 @@ main: $(FILES)
 	ghc --make Main.hs
 
 optimized, opt: $(FILES)
-	ghc -o janus -O2 -rtsopts --make Main.hs
+	ghc -o ../bin/janus -O2 -rtsopts --make Main.hs
 
 haddock, h: $(FILES)
 	haddock -h -o ../docs/ Main.hs
