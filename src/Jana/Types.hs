@@ -14,7 +14,8 @@ module Jana.Types (
     checkForBreak, addBreakPoint, removeBreakPoint, isDebuggerRunning, whenDebugging,
     whenDebuggingElse, doWhenDebugging, whenFirstBreak, whenFullDebugging, isErrorDebugging,
     executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution,
-    isForwardExecution, whenForwardExecutionElse, isUserForwardExecution, doWhenForwardExecution
+    isForwardExecution, whenForwardExecutionElse, isUserForwardExecution, doWhenForwardExecution,
+    stepForward, stepBackward
     ) where
 
 import Control.Applicative
@@ -151,6 +152,7 @@ data EvalState = ES { breakPoints :: BreakPoints
                     , forwardExecution :: Bool
                     , userForwardExecution :: Bool
                     , firstDBbeginning :: Bool
+                    , stepDebugging :: Bool
                     , store :: Store}
 
 emptyStore :: EvalState
@@ -158,6 +160,7 @@ emptyStore = ES { breakPoints = Set.empty,
                   userForwardExecution = True,
                   forwardExecution = True,
                   firstDBbeginning = True,
+                  stepDebugging = False,
                   store = Map.empty}
 
 -- Break points
@@ -182,7 +185,9 @@ checkLine l p =
 checkForBreak :: SourcePos -> Eval Bool
 checkForBreak s =
   do evalS <- get
-     return $ Set.member (sourceLine s) (breakPoints evalS)
+     let step = stepDebugging evalS
+     when step $ modify $ \x -> x {stepDebugging = False}
+     return $ or [step, Set.member (sourceLine s) (breakPoints evalS)]
 
 removeBreakPoint :: Line -> Eval ()
 removeBreakPoint l =
@@ -199,6 +204,14 @@ executeForward =
 executeBackward :: Eval ()
 executeBackward =
   modify $ \x -> x {userForwardExecution = False, forwardExecution = not (userForwardExecution x)}
+
+stepForward :: Eval ()
+stepForward =
+  modify $ \x -> x {stepDebugging = True, userForwardExecution = True, forwardExecution = userForwardExecution x}
+
+stepBackward :: Eval ()
+stepBackward =
+  modify $ \x -> x {stepDebugging = True, userForwardExecution = False, forwardExecution = not (userForwardExecution x)}
 
 isForwardExecution :: Eval Bool
 isForwardExecution =

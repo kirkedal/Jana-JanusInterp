@@ -320,6 +320,9 @@ parseDBCommand pos ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak 
 parseDBCommand pos ("delete":n) = parseDBCommand pos ("d":n)
 parseDBCommand _   ["f"]        = executeForward
 parseDBCommand pos ["forward"]  = parseDBCommand pos ["f"]
+parseDBCommand _   ["n"]        = stepForward
+parseDBCommand _   ["next"]     = parseDBCommand pos ["n"]
+parseDBCommand _   ["r"]        = stepBackward
 parseDBCommand pos ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak pos
 parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
 parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
@@ -353,9 +356,11 @@ dbUsage = "Usage of the jana debugger\n\
         \IMPORTANT: all breakpoints will be added at the beginning of a line and only on statements.\n\
         \options:\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
-        \  b[ackward]   reverse execution to previous breakpoint\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
+        \  b[ackward]   reverse execution to previous breakpoint\n\
         \  f[orward]    execution to next breakpoint in forward direction\n\
+        \  n[ext]       step to next statement\n\
+        \  r            step to previous statement\n\
         \  h[elp]       this menu\n\
         \  l[ine]       print current line\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
