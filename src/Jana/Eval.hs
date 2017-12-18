@@ -532,7 +532,7 @@ evalLval :: Maybe Lval -> Lval -> Eval Value
 evalLval lv (Var idnt) = checkLvalAlias lv (Var idnt) >> getVar idnt
 evalLval lv (Lookup idnt@(Ident _ pos) es) =
   do let ps = map getExprPos es
-     idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr e)) $ zip es ps
+     idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr' lv e)) $ zip es ps
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
      checkLvalAlias lv (Lookup idnt idxVals)
      arr <- unpackArray pos =<< getVar idnt
@@ -551,7 +551,10 @@ numberToModular val = return val
 
 
 evalModularExpr :: Expr -> Eval Value
-evalModularExpr expr = evalExpr Nothing expr >>= numberToModular
+evalModularExpr expr = evalModularExpr' Nothing expr
+
+evalModularExpr' :: Maybe Lval -> Expr -> Eval Value
+evalModularExpr' lv expr = evalExpr lv expr >>= numberToModular
 
 evalModularAliasExpr :: Maybe Lval -> Expr -> Eval Value
 evalModularAliasExpr lv expr = evalExpr lv expr >>= numberToModular
