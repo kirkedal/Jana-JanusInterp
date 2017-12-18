@@ -484,13 +484,11 @@ evalStmt (ExtCall _ _ pos) =
 evalStmt (ExtUncall _ _ pos) =
   pos <!!> noExternalCalls
 evalStmt (Swap id1 id2 pos) =
-  do alias <- id1 `isSameArrayElement` id2
-     unless alias $ do
-       val1 <- evalLval (Just id2) id1
-       val2 <- evalLval (Just id1) id2
-       if typesMatch val1 val2
-         then setLval id2 val1 >> setLval id1 val2
-         else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
+  do val1 <- evalLval (Just id2) id1
+     val2 <- evalLval (Just id1) id2
+     if typesMatch val1 val2
+       then setLval id2 val1 >> setLval id1 val2
+       else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
   where
     setLval (Var idnt) val = setVar idnt val
     setLval (Lookup idnt idxExpr) (JInt val) =
@@ -501,12 +499,6 @@ evalStmt (Swap id1 id2 pos) =
          setVar idnt $ JArray sIdx arrUpd
     setLval _ val = 
       pos <!!> swapTypeError (showValueType val) "array"
-    Var _ `isSameArrayElement` Var _ = return False
-    Lookup x1 e1 `isSameArrayElement` Lookup x2 e2 =
-        do v1 <- mapM (evalModularExpr) e1
-           v2 <- mapM (evalModularExpr) e2
-           return $ x1 == x2 && v1 == v2
-    _ `isSameArrayElement` _ = error "Comparison of different types"
 evalStmt (UserError msg pos)          = pos <!!> userError msg
 evalStmt (Prints (Print msg) _)       = liftIO $ putStrLn msg
 evalStmt (Prints (Printf msg []) pos) = evalStmts [Prints (Print msg) pos]

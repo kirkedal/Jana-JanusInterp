@@ -1,0 +1,5 @@
+procedure main()
+  int a[2] = {1,2}
+
+  a[0] <=> a[a[0]]  // a[0] on the both hand sides.
+  a[0] <=> a[a[0]]
