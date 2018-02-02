@@ -247,10 +247,10 @@ pushStmt =
      chkExpression (\z -> Push z y pos) x
   where
     chkExpression stmtFun (LV (Var i) _) = return $ stmtFun i
-    chkExpression stmtFun expr = 
+    chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int p) f expr p) [stmtFun f] (LocalVar (Int p) f (Number 0p ) p) p
+         return $ Local (LocalVar (Int p) f (Just expr) p) [stmtFun f] (LocalVar (Int p) f (Just (Number 0 p)) p) p
 
 popStmt :: Parser Stmt
 popStmt =
@@ -260,10 +260,10 @@ popStmt =
      chkExpression (\z -> Pop z y pos) x
   where
     chkExpression stmtFun (LV (Var i) _) = return $ stmtFun i
-    chkExpression stmtFun expr = 
+    chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int p) f (Number 0 p) p) [stmtFun f] (LocalVar (Int p) f expr p) p
+         return $ Local (LocalVar (Int p) f (Just $ (Number 0 p)) p) [stmtFun f] (LocalVar (Int p) f (Just expr) p) p
 
 twoArgs :: Parser (Expr, Ident)
 twoArgs =
@@ -280,18 +280,19 @@ localStmt =
      stats    <- many1 statement
      reserved "delocal"
      fstdeloc <- decl
-     delocs   <- count (length locs-1) $ comma >> decl 
+     delocs   <- count (length locs-1) $ comma >> decl
      let alllocs = zip locs $ fstdeloc:delocs
      return $ head $ foldr (\(x,y) s -> [Local x s y pos]) stats alllocs
-  where 
-    decl = 
-      do pos    <- getPosition
-         typ    <- atype
-         idnt  <- identifier
-         case typ of
-           (Int _) -> liftM2 (\x y -> (LocalArray idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (reservedOp "=" >> array)
-                  <|> liftM  (\x -> (LocalVar typ idnt x pos)) (reservedOp "=" >> expression)
-           _       -> liftM  (\x -> (LocalVar typ idnt x pos)) (reservedOp "=" >> expression)
+  where
+      decl =
+        do pos  <- getPosition
+           typ  <- atype
+           idnt <- identifier
+           case typ of
+             (Int _) -> liftM2 (\x y -> (LocalArray idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
+                    <|> liftM  (\x -> (LocalVar typ idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
+             _       -> liftM  (\x -> (LocalVar typ idnt (Just x) pos)) (reservedOp "=" >> expression)
+
 
 atype :: Parser Type
 atype =   (reserved "int"   >> liftM Int getPosition)
@@ -333,7 +334,7 @@ formatArgumentList args_expr stmtFun =
       do f <- getFreshVar
          return (f, Just((f,expr)))
     foldFun _  Nothing    stmt = stmt
-    foldFun p (Just(i,e)) stmt = Local (LocalVar (Int p) i e p) [stmt] (LocalVar (Int p) i e p) p
+    foldFun p (Just(i,e)) stmt = Local (LocalVar (Int p) i (Just e) p) [stmt] (LocalVar (Int p) i (Just e) p) p
 
 swapStmt :: Parser Stmt
 swapStmt =
@@ -506,10 +507,9 @@ parseStmts pos filename text =
   case runParser stmtParser 0 filename text of
     Left e  -> Left $ toJanaError e
     Right r -> Right r
-  where 
+  where
     stmtParser =
-      do
-        setPosition pos 
-        s <- many statement
-        eof
-        return s
+      do setPosition pos
+         s <- many statement
+         eof
+         return s

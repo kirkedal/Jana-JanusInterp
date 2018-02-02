@@ -101,11 +101,12 @@ formatExpr = f 0
         parens' bool = if bool then parens else id
 
 formatLocalDecl :: LocalDecl -> Doc
-formatLocalDecl (LocalVar typ idnt expr p)     = formatVdecl (Scalar typ idnt (Just expr) p)
-formatLocalDecl (LocalArray idnt iexprs expr p) = formatVdecl (Array idnt iexprs (Just expr) p)
+formatLocalDecl (LocalVar typ idnt expr p)     = formatVdecl (Scalar typ idnt expr p)
+formatLocalDecl (LocalArray idnt iexprs expr p) = formatVdecl (Array idnt iexprs expr p)
 
 formatAssertLocalDecl :: LocalDecl -> Doc
-formatAssertLocalDecl (LocalVar _ idnt expr p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
+formatAssertLocalDecl (LocalVar tp idnt Nothing p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
+formatAssertLocalDecl (LocalVar _ idnt (Just expr) p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
 formatAssertLocalDecl (LocalArray _ _ _ _) = error "Not implemented"
 
 formatStmts :: [Stmt] -> Doc

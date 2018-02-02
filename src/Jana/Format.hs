@@ -95,11 +95,14 @@ formatVdecl (Array id size a_exp _) =
         formatExp Nothing   = empty
 
 
-formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent ident <+> equals <+> formatExpr expr
-formatLocalDecl (LocalArray ident iexprs expr p) = formatType (Int p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ equals <+> 
-  formatExpr expr
+formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent ident <+> formatMaybeExpr expr
+formatLocalDecl (LocalArray ident iexprs expr p) = formatType (Int p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ formatMaybeExpr expr
   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatIndex Nothing  = text "[]"
+
+formatMaybeExpr :: Maybe Expr -> Doc
+formatMaybeExpr Nothing  = empty
+formatMaybeExpr (Just e) = equals <+> formatExpr e
 
 formatStmts = vcat . map formatStmt
 

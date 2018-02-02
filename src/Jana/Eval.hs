@@ -408,13 +408,13 @@ evalStmt (From e1 s1 s2 e2 _) =
                          whenBackwardExecution (evalStmts s2))
 evalStmt (Iterate typ idnt startE stepE endE stmts pos) =
   evalStmt (Local
-    (LocalVar typ idnt startE pos)
+    (LocalVar typ idnt (Just startE) pos)
     [From
       (BinOp EQ (LV (Var idnt) pos) startE)
       []
       (stmts++[Assign AddEq (Var idnt) stepE pos])
       (BinOp EQ (LV (Var idnt) pos) (BinOp Add endE stepE)) pos]
-    (LocalVar typ idnt (BinOp Add endE stepE) pos) pos)
+    (LocalVar typ idnt (Just (BinOp Add endE stepE)) pos) pos)
 evalStmt (Push idnt1 idnt2 pos) =
   do stkhead <- unpackInt pos   =<< getVar idnt1
      stktail <- unpackStack pos =<< getVar idnt2
@@ -435,24 +435,24 @@ evalStmt (Local assign1 stmts assign2 _) =
      whenForwardExecutionElse (assertBinding assign2) (assertBinding assign1)
   where
     createBinding (LocalVar typ idnt expr _) =
-      do val <- evalModularExpr expr
+      do val <- evalModularExpr (fromMaybeExpr typ expr)
          checkType typ val
          bindVar idnt val
     createBinding (LocalArray idnt size expr pos) =
-      do sizeInt <- evalSize pos size $ Just $ sizeEstimate expr
-         exprs <- flattenArray pos sizeInt expr
+      do sizeInt <- evalSize pos size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
+         exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
          vals  <- mapM evalModularExpr exprs
          valsI <- mapM (checkTypeInt pos) vals
          bindVar idnt $ JArray sizeInt valsI
-    assertBinding (LocalVar _ idnt expr pos) =
-      do val <- evalModularAliasExpr (Just $ Var idnt) expr
+    assertBinding (LocalVar typ idnt expr pos) =
+      do val <- evalModularAliasExpr (Just $ Var idnt) (fromMaybeExpr typ expr)
          val' <- getVar idnt
          unless (val == val') $
            pos <!!> wrongDelocalValue idnt (show val) (show val')
          unbindVar idnt
     assertBinding (LocalArray idnt size expr pos) =
-      do sizeInt <- evalAliasSize pos (Just (Var idnt)) size $ Just $ sizeEstimate expr
-         exprs <- flattenArray pos sizeInt expr
+      do sizeInt <- evalAliasSize pos (Just (Var idnt)) size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
+         exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
          vals  <- mapM (evalModularAliasExpr (Just $ Var idnt)) exprs
          valsI <- mapM (checkTypeInt pos) vals
          let valsC = JArray sizeInt valsI
@@ -472,6 +472,10 @@ evalStmt (Local assign1 stmts assign2 _) =
            pos <!!> delocalTypeMismatch id1 "Array" (show typ)
     checkIdentAndType (LocalVar typ _ _ _) (LocalArray id1 _ _ pos) =
            pos <!!> delocalTypeMismatch id1 "Array" (show typ)
+    fromMaybeExpr typ Nothing   = baseVal typ
+    fromMaybeExpr _ (Just expr) = expr
+    fromMaybeArrayExpr pos Nothing = ArrayE [] pos
+    fromMaybeArrayExpr _ (Just expr) = expr
 
 evalStmt (Call funId args _) =
   do proc <- getProc funId

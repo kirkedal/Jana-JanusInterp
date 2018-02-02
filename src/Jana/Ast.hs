@@ -14,6 +14,12 @@ instance Eq Type where
   (BoolT _) == (BoolT _) = True
   _         == _         = False
 
+baseVal :: Type -> Expr
+baseVal (Int sp)   = Number 0 sp
+baseVal (BoolT sp) = Boolean False sp
+baseVal (Stack sp) = Empty (Ident "" sp) sp
+
+
 -- Identifier
 data Ident =
   Ident String SourcePos
@@ -85,8 +91,8 @@ data Stmt
 
 -- Local Declaration
 data LocalDecl
-    = LocalVar Type Ident Expr SourcePos
-    | LocalArray Ident [Maybe Expr] Expr SourcePos
+    = LocalVar Type Ident (Maybe Expr) SourcePos
+    | LocalArray Ident [Maybe Expr] (Maybe Expr) SourcePos
     deriving (Eq)
 
 -- Expression
