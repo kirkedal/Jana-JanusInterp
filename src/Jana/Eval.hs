@@ -10,14 +10,11 @@ import Prelude hiding (GT, LT, EQ, userError)
 import System.Exit
 import System.IO
 import Data.Char (toLower, isSpace)
-import Data.List (genericSplitAt, genericReplicate, intercalate, genericTake,  genericIndex)
+import Data.List (genericSplitAt, intercalate, genericTake,  genericIndex)
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Reader
-
-import Control.Monad.Coroutine
-import Control.Monad.Coroutine.SuspensionFunctors (Yield, yield)
 
 import Text.Parsec.Pos
 
@@ -27,11 +24,9 @@ import Jana.Types
 import Jana.Invert
 import Jana.Error
 import Jana.ErrorMessages
-import Jana.Parser (parseExprString, parseStmtsString)
 import Jana.Printf
 import Jana.Debug
 
-import Debug.Trace
 
 inArgument :: String -> String -> Eval a -> Eval a
 inArgument funid argid monad = catchError monad $
@@ -71,11 +66,14 @@ assert :: Bool -> Expr -> Eval ()
 assert bool expr =
   do val1 <- unpackBool (getExprPos expr) =<< evalModularExpr expr
      unless (val1 == bool) $ pos <!!> msg
-  where 
+  where
     msg = assertionFail ("should be " ++ map toLower (show bool))
     pos = getExprPos expr
 
+assertTrue :: Expr -> Eval ()
 assertTrue  expr = catchError (assert True  expr) catchDebugError
+
+assertFalse :: Expr -> Eval ()
 assertFalse expr = catchError (assert False expr) catchDebugError
 
 checkType :: Type -> Value -> Eval ()
@@ -88,7 +86,7 @@ checkType (Stack pos) val = pos <!!> typeMismatch ["stack"] (showValueType val)
 checkType (BoolT pos) val = pos <!!> typeMismatch ["bool"] (showValueType val)
 
 checkTypeInt :: SourcePos -> Value -> Eval Integer
-checkTypeInt pos (JInt v) = return v
+checkTypeInt _   (JInt v) = return v
 checkTypeInt pos val      = pos <!!> typeMismatch ["int"] (showValueType val)
 
 -- This is likely to be wrong
@@ -96,8 +94,8 @@ checkVdecl :: Vdecl -> Value -> Eval ()
 checkVdecl (Scalar Int {}   _ _ _)  (JInt _)     = return ()
 checkVdecl (Scalar Stack {} _ _ _)  (JStack _)   = return ()
 checkVdecl (Array _ []  _ _)   (JArray _ _) = return ()
-checkVdecl (Array _ sizeExpr _ pos) (JArray size arr) =
-  do sizeInt <- evalSize pos sizeExpr (Just size)
+checkVdecl (Array _ sizeExpr _ pos) (JArray size _) =
+  do _ <- evalSize pos sizeExpr (Just size)
      return ()
      -- val <- evalModularExpr x
      -- valInt <- checkTypeInt pos val
@@ -138,25 +136,23 @@ getExprPos (Nil pos)       = pos
 getExprPos (ArrayE _ pos)  = pos
 
 runProgram :: String -> Program -> EvalOptions -> IO ()
-runProgram _ p@(Program (Just main) procs) evalOptions =
-  runProgramAfterDBcheck checkDB evalOptions
+runProgram _ p@(Program (Just _) _) evalOpts =
+  runProgramAfterDBcheck checkDB evalOpts
   where
     checkDB =
-      if (runDebugger evalOptions) == DebugOff
+      if (runDebugger evalOpts) == DebugOff
         then p
-        else injectDBProgram p 
+        else injectDBProgram p
 runProgram filename (Program Nothing _) _ =
   print (newFileError filename noMainProc) >> exitWith (ExitFailure 1)
--- runProgram filename (Program _ _) _ =
---   print (newFileError filename multipleMainProcs) >> exitWith (ExitFailure 1)
 
 runProgramAfterDBcheck :: Program -> EvalOptions -> IO ()
-runProgramAfterDBcheck (Program (Just main) procs) evalOptions =
+runProgramAfterDBcheck (Program (Just main) procs) evalOpts =
   case procEnvFromList procs of
     Left err -> print err >> exitWith (ExitFailure 1)
-    Right procEnv ->
-      let env = EE { procEnv = procEnv
-                   , evalOptions = evalOptions
+    Right pEnv ->
+      let env = EE { procEnv = pEnv
+                   , evalOptions = evalOpts
                    , aliases = Jana.Aliases.empty}
       in do runRes <- runEval (evalMain main) emptyStore env
             case runRes of
@@ -203,30 +199,30 @@ evalAliasSize pos _ _ _ = pos <!!> arraySize
 ---- END
 
 evalMain :: ProcMain -> Eval ()
-evalMain proc@(ProcMain vdecls body pos) =
+evalMain (ProcMain vdecls mainbody _) =
   do mapM_ initBinding vdecls
-     evalStmts body
+     evalStmts mainbody
   where
-    initBinding (Scalar (BoolT _) id Nothing     _)   = bindVar id $ JBool True
-    initBinding (Scalar (Int _)   id Nothing     _)   = bindVar id $ JInt 0
-    initBinding (Scalar (Stack _) id Nothing     _)   = bindVar id nil
-    initBinding (Scalar typ       id (Just expr) pos) =
-      do val <- evalModularAliasExpr (Just $ Var id) expr
+    initBinding (Scalar (BoolT _) idnt Nothing     _)   = bindVar idnt $ JBool True
+    initBinding (Scalar (Int _)   idnt Nothing     _)   = bindVar idnt $ JInt 0
+    initBinding (Scalar (Stack _) idnt Nothing     _)   = bindVar idnt nil
+    initBinding (Scalar typ       idnt (Just expr) _) =
+      do val <- evalModularAliasExpr (Just $ Var idnt) expr
          checkType typ val
-         bindVar id val
-    initBinding (Array id [Nothing]     Nothing pos) = pos <!!> arraySizeMissing id
-    initBinding (Array id size Nothing pos) =
+         bindVar idnt val
+    initBinding (Array idnt [Nothing]     Nothing pos) = pos <!!> arraySizeMissing idnt
+    initBinding (Array idnt size Nothing pos) =
       do sizeInt <- evalSize pos size Nothing
          exprs <- flattenArray pos sizeInt $ ArrayE [] pos
          vals  <- mapM evalModularExpr exprs
          valsI <- mapM (checkTypeInt pos) vals
-         bindVar id $ JArray sizeInt valsI
-    initBinding (Array id size (Just expr) pos) =
+         bindVar idnt $ JArray sizeInt valsI
+    initBinding (Array idnt size (Just expr) pos) =
       do sizeInt <- evalSize pos size $ Just $ sizeEstimate expr
          exprs <- flattenArray pos sizeInt expr
          vals  <- mapM evalModularExpr exprs
          valsI <- mapM (checkTypeInt pos) vals
-         bindVar id $ JArray sizeInt valsI
+         bindVar idnt $ JArray sizeInt valsI
 
 
 evalProc :: Proc -> [Ident] -> Eval ()
@@ -238,42 +234,42 @@ evalProc proc args = inProcedure proc $
      putStore newStore
      local updateAliases (evalStmts $ body proc)
      putStore oldStore
-  where vdecls = params proc
-        refs = mapM getRef args
-        procPos Proc { procname = Ident _ pos } = pos
-        checkNumArgs expArgs gotArgs =
-          when (expArgs /= gotArgs) $
-            procPos proc <!!> argumentError proc expArgs gotArgs
-        checkArg (vdecl, ref) = inArgument (ident proc) (ident $ getVdeclIdent vdecl) $
-          getRefValue ref >>= checkVdecl vdecl
-        checkArgTypes =
-          liftM (zip vdecls) refs >>= mapM_ checkArg
-        localStore =
-          liftM (storeFromList . zip (map (ident . getVdeclIdent) vdecls)) refs
-        getVdeclIdent (Scalar _ id _ _) = id
-        getVdeclIdent (Array id _ _ _)  = id
-        updateAliases env =
-          let xs = zip (map ident args) (map ident vdecls) in
-            env { aliases = introAndPropAliases xs (aliases env) }
-
+  where
+    vdecls = params proc
+    refs = mapM getRef args
+    procPos Proc { procname = Ident _ pos } = pos
+    checkNumArgs expArgs gotArgs =
+      when (expArgs /= gotArgs) $
+        procPos proc <!!> argumentError proc expArgs gotArgs
+    checkArg (vdecl, ref) = inArgument (ident proc) (ident $ getVdeclIdent vdecl) $
+      getRefValue ref >>= checkVdecl vdecl
+    checkArgTypes =
+      liftM (zip vdecls) refs >>= mapM_ checkArg
+    localStore =
+      liftM (storeFromList . zip (map (ident . getVdeclIdent) vdecls)) refs
+    getVdeclIdent (Scalar _ idnt _ _) = idnt
+    getVdeclIdent (Array idnt _ _ _)  = idnt
+    updateAliases env =
+      let xs = zip (map ident args) (map ident vdecls) in
+        env { aliases = introAndPropAliases xs (aliases env) }
 
 assignLval :: ModOp -> Lval -> Expr -> SourcePos -> Eval ()
-assignLval modOp lv@(Var id) expr _ =
+assignLval modOp lv@(Var idnt) expr _ =
   do exprVal <- evalModularAliasExpr (Just lv) expr
-     varVal  <- getVar id
+     varVal  <- getVar idnt
      val <- performModOperation modOp varVal exprVal exprPos exprPos >>= numberToModular
-     setVar id val
+     setVar idnt val
   where exprPos = getExprPos expr
-assignLval modOp (Lookup id idxExpr) expr pos =
+assignLval modOp (Lookup idnt idxExpr) expr pos =
   do let ps      = map getExprPos idxExpr
-     idx         <- mapM (\(e, p) -> (unpackInt p =<< evalModularAliasExpr (Just $ Var id) e)) $ zip idxExpr ps 
-     (sIdx,arr)  <- unpackArray pos =<< getVar id
+     idx         <- mapM (\(e, p) -> (unpackInt p =<< evalModularAliasExpr (Just $ Var idnt) e)) $ zip idxExpr ps 
+     (sIdx,arr)  <- unpackArray pos =<< getVar idnt
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
-     val    <- evalModularAliasExpr (Just $ Lookup id idxVals) expr
+     val    <- evalModularAliasExpr (Just $ Lookup idnt idxVals) expr
      oldval <- arrayLookup (sIdx,arr) idx pos
      newval <- unpackInt pos =<< numberToModular =<< performModOperation modOp oldval val exprPos exprPos
      arrUpd <- arrayModify pos sIdx arr idx newval
-     setVar id $ JArray sIdx arrUpd
+     setVar idnt $ JArray sIdx arrUpd
   where exprPos = getExprPos expr
 
 evalStmts :: [Stmt] -> Eval ()
@@ -292,20 +288,12 @@ evalStmts_ s_come s_done =
     bck (s:sd) = evalStmtBck s >> whenForwardExecutionElse (evalStmts_ (s_come) s_done) (evalStmts_ (s:s_come) sd)
 
 evalStmtBck :: Stmt -> Eval ()
--- evalStmtBck stmt | trace ("Backward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
---   where
---     debug (Debug _ _ ) = " in debug stmt"
---     debug _            = " in " ++ show stmt
 evalStmtBck stmt =
   flipExecution >> (catchError (inStatement invStmt $ evalStmt invStmt) catchDebugError) >> flipExecution
   where
     invStmt = invertStmt Locally stmt
 
 evalStmtFwd :: Stmt -> Eval ()
--- evalStmtFwd stmt | trace ("Forward at line" ++ (show $ sourceLine $ stmtPos stmt) ++ debug stmt) False = undefined
---   where
---     debug (Debug _ _) = " in debug stmt"
---     debug _           = " in " ++ show stmt
 evalStmtFwd stmt =
   catchError (inStatement stmt $ evalStmt stmt) catchDebugError
 
@@ -326,28 +314,31 @@ makeBreak pos =
 parseDBCommand :: SourcePos -> [String] -> Eval ()
 parseDBCommand pos ("a":n)      = mapM (addBreakPoint . read) n >> makeBreak pos
 parseDBCommand pos ("add":n)    = parseDBCommand pos ("a":n)
-parseDBCommand pos ["b"]        = executeBackward
+parseDBCommand _   ["b"]        = executeBackward
 parseDBCommand pos ["backward"] = parseDBCommand pos ["b"]
 parseDBCommand pos ("d":n)      = mapM (removeBreakPoint . read) n >> makeBreak pos
 parseDBCommand pos ("delete":n) = parseDBCommand pos ("d":n)
-parseDBCommand pos ["f"]        = executeForward
+parseDBCommand _   ["f"]        = executeForward
 parseDBCommand pos ["forward"]  = parseDBCommand pos ["f"]
+parseDBCommand _   ["n"]        = stepForward
+parseDBCommand pos ["next"]     = parseDBCommand pos ["n"]
+parseDBCommand _   ["r"]        = stepBackward
 parseDBCommand pos ["h"]        = (liftIO $ putStrLn dbUsage) >> makeBreak pos
 parseDBCommand pos ["help"]     = parseDBCommand pos ["h"]
 parseDBCommand pos ["l"]        = (liftIO $ putStrLn ("[Current line is " ++ (show $ sourceLine pos) ++ "]")) >> makeBreak pos
 parseDBCommand pos ["line"]     = parseDBCommand pos ["l"]
 parseDBCommand pos ("p":var)    = mapM (\x -> catchError (printVar x) catchDebugError) var >> makeBreak pos
   where
-    printVar var =
-     do val <- (getVar $ Ident var pos)
-        liftIO $ putStrLn $ printVdecl var val 
+    printVar v =
+     do val <- (getVar $ Ident v pos)
+        liftIO $ putStrLn $ printVdecl v val
 parseDBCommand pos ("print":v)  = parseDBCommand pos ("p":v)
 parseDBCommand pos ["s"]        =
   do env <- get
      liftIO $ showStore env >>= putStrLn
      makeBreak pos
 parseDBCommand pos ["store"]    = parseDBCommand pos ["s"]
-parseDBCommand pos ["q"]        = liftIO $ exitWith $ ExitSuccess
+parseDBCommand _   ["q"]        = liftIO $ exitWith $ ExitSuccess
 parseDBCommand pos ["quit"]     = parseDBCommand pos ["q"]
 parseDBCommand pos str          = (liftIO $ putStrLn errorTxt) >> makeBreak pos
   where
@@ -360,14 +351,16 @@ catchDebugError msg =
       (liftIO $ putStrLn $ show (errorMessages msg)) >>
       makeBreak (errorPos msg)
 
-
+dbUsage :: String
 dbUsage = "Usage of the jana debugger\n\
         \IMPORTANT: all breakpoints will be added at the beginning of a line and only on statements.\n\
         \options:\n\
         \  a[dd] N*     adds zero or more breakpoint at lines N (space separated) \n\
-        \  b[ackward]   reverse execution to previous breakpoint\n\
         \  d[elete] N*  deletes zero or more breakpoints at lines N (space separated)\n\
+        \  b[ackward]   reverse execution to previous breakpoint\n\
         \  f[orward]    execution to next breakpoint in forward direction\n\
+        \  n[ext]       step to next statement\n\
+        \  r            step to previous statement\n\
         \  h[elp]       this menu\n\
         \  l[ine]       print current line\n\
         \  p[rint] V*   prints the content of variables V (space separated)\n\
@@ -402,7 +395,7 @@ evalStmt (If e1 s1 s2 e2 _) =
        else do evalStmts s2
                whenForwardExecution  (assertFalse e2 >> whenBackwardExecution (evalStmts s2))
                whenBackwardExecution (assertFalse e1)
-evalStmt (From e1 s1 s2 e2 pos) =
+evalStmt (From e1 s1 s2 e2 _) =
   do assertTrue e1
      whenForwardExecution loop
   where loop = do evalStmts s1
@@ -413,108 +406,101 @@ evalStmt (From e1 s1 s2 e2 pos) =
                        (assertFalse e1 >>
                          whenForwardExecution (loop >> whenBackwardExecution (assertFalse e1)) >>
                          whenBackwardExecution (evalStmts s2))
-evalStmt (Iterate typ ident startE stepE endE stmts pos) =
+evalStmt (Iterate typ idnt startE stepE endE stmts pos) =
   evalStmt (Local
-    (LocalVar typ ident startE pos)
+    (LocalVar typ idnt startE pos)
     [From
-      (BinOp EQ (LV (Var ident) pos) startE)
+      (BinOp EQ (LV (Var idnt) pos) startE)
       []
-      (stmts++[Assign AddEq (Var ident) stepE pos])
-      (BinOp EQ (LV (Var ident) pos) (BinOp Add endE stepE)) pos]
-    (LocalVar typ ident (BinOp Add endE stepE) pos) pos)
-evalStmt (Push id1 id2 pos) =
-  do head <- unpackInt pos   =<< getVar id1
-     tail <- unpackStack pos =<< getVar id2
-     setVar id2 $ JStack $ head : tail
-     setVar id1 $ JInt 0
-evalStmt stmt@(Pop id1 id2 pos) =
-  do head <- unpackInt pos   =<< getVar id1
-     tail <- unpackStack pos =<< getVar id2
-     if head /= 0
-       then pos <!!> popToNonZero id1
-       else case tail of
-         (x:xs) -> setVar id1 (JInt x) >> setVar id2 (JStack xs)
+      (stmts++[Assign AddEq (Var idnt) stepE pos])
+      (BinOp EQ (LV (Var idnt) pos) (BinOp Add endE stepE)) pos]
+    (LocalVar typ idnt (BinOp Add endE stepE) pos) pos)
+evalStmt (Push idnt1 idnt2 pos) =
+  do stkhead <- unpackInt pos   =<< getVar idnt1
+     stktail <- unpackStack pos =<< getVar idnt2
+     setVar idnt2 $ JStack $ stkhead : stktail
+     setVar idnt1 $ JInt 0
+evalStmt (Pop idnt1 idnt2 pos) =
+  do stkhead <- unpackInt pos   =<< getVar idnt1
+     stktail <- unpackStack pos =<< getVar idnt2
+     if stkhead /= 0
+       then pos <!!> popToNonZero idnt1
+       else case stktail of
+         (x:xs) -> setVar idnt1 (JInt x) >> setVar idnt2 (JStack xs)
          []     -> pos <!!> emptyStack
 evalStmt (Local assign1 stmts assign2 _) =
   do checkIdentAndType assign1 assign2
      createBinding assign1
      evalStmts stmts
      whenForwardExecutionElse (assertBinding assign2) (assertBinding assign1)
-  where createBinding (LocalVar typ id expr pos) =
-          do val <- evalModularExpr expr
-             checkType typ val
-             bindVar id val
-        createBinding (LocalArray id size expr pos) =
-          do sizeInt <- evalSize pos size $ Just $ sizeEstimate expr
-             exprs <- flattenArray pos sizeInt expr
-             vals  <- mapM evalModularExpr exprs
-             valsI <- mapM (checkTypeInt pos) vals
-             bindVar id $ JArray sizeInt valsI
-        assertBinding (LocalVar _ id expr pos) =
-          do val <- evalModularAliasExpr (Just $ Var id) expr
-             val' <- getVar id
-             unless (val == val') $
-               pos <!!> wrongDelocalValue id (show val) (show val')
-             unbindVar id
-        assertBinding (LocalArray id size expr pos) =
-          do sizeInt <- evalAliasSize pos (Just (Var id)) size $ Just $ sizeEstimate expr
-             exprs <- flattenArray pos sizeInt expr
-             vals  <- mapM (evalModularAliasExpr (Just $ Var id)) exprs
-             valsI <- mapM (checkTypeInt pos) vals
-             let valsC = JArray sizeInt valsI
-             vals' <- getVar id
-             unless (valsC == vals') $
-               pos <!!> wrongDelocalValue id (show valsC) (show vals')
-             unbindVar id
-        checkIdentAndType (LocalVar typ1 id1 _ _) (LocalVar typ2 id2 _ pos) =
-          do unless (id1 == id2) $
-               pos <!!> delocalNameMismatch id1 id2
-             unless (typ1 == typ2) $
-               pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
-        checkIdentAndType (LocalArray id1 size1 _ pos) (LocalArray id2 size2 _ _) =
-          do unless (id1 == id2) $
-               pos <!!> delocalNameMismatch id1 id2
-        checkIdentAndType (LocalArray id1 _ _ pos) (LocalVar typ _ _ _) =
-               pos <!!> delocalTypeMismatch id1 "Array" (show typ)
-        checkIdentAndType (LocalVar typ _ _ _) (LocalArray id1 _ _ pos) =
-               pos <!!> delocalTypeMismatch id1 "Array" (show typ)
+  where
+    createBinding (LocalVar typ idnt expr _) =
+      do val <- evalModularExpr expr
+         checkType typ val
+         bindVar idnt val
+    createBinding (LocalArray idnt size expr pos) =
+      do sizeInt <- evalSize pos size $ Just $ sizeEstimate expr
+         exprs <- flattenArray pos sizeInt expr
+         vals  <- mapM evalModularExpr exprs
+         valsI <- mapM (checkTypeInt pos) vals
+         bindVar idnt $ JArray sizeInt valsI
+    assertBinding (LocalVar _ idnt expr pos) =
+      do val <- evalModularAliasExpr (Just $ Var idnt) expr
+         val' <- getVar idnt
+         unless (val == val') $
+           pos <!!> wrongDelocalValue idnt (show val) (show val')
+         unbindVar idnt
+    assertBinding (LocalArray idnt size expr pos) =
+      do sizeInt <- evalAliasSize pos (Just (Var idnt)) size $ Just $ sizeEstimate expr
+         exprs <- flattenArray pos sizeInt expr
+         vals  <- mapM (evalModularAliasExpr (Just $ Var idnt)) exprs
+         valsI <- mapM (checkTypeInt pos) vals
+         let valsC = JArray sizeInt valsI
+         vals' <- getVar idnt
+         unless (valsC == vals') $
+           pos <!!> wrongDelocalValue idnt (show valsC) (show vals')
+         unbindVar idnt
+    checkIdentAndType (LocalVar typ1 id1 _ _) (LocalVar typ2 id2 _ pos) =
+      do unless (id1 == id2) $
+           pos <!!> delocalNameMismatch id1 id2
+         unless (typ1 == typ2) $
+           pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
+    checkIdentAndType (LocalArray id1 _ _ pos) (LocalArray id2 _ _ _) =
+      do unless (id1 == id2) $
+           pos <!!> delocalNameMismatch id1 id2
+    checkIdentAndType (LocalArray id1 _ _ pos) (LocalVar typ _ _ _) =
+           pos <!!> delocalTypeMismatch id1 "Array" (show typ)
+    checkIdentAndType (LocalVar typ _ _ _) (LocalArray id1 _ _ pos) =
+           pos <!!> delocalTypeMismatch id1 "Array" (show typ)
 
-evalStmt stmt@(Call funId args _) =
+evalStmt (Call funId args _) =
   do proc <- getProc funId
      evalProc proc args
 evalStmt (Uncall funId args _) =
   do proc <- getProc funId
      evalProc (invertProc proc) args
-evalStmt stmt@(ExtCall funId args pos) =
+evalStmt (ExtCall _ _ pos) =
   pos <!!> noExternalCalls
-evalStmt (ExtUncall funId args pos) =
+evalStmt (ExtUncall _ _ pos) =
   pos <!!> noExternalCalls
 evalStmt (Swap id1 id2 pos) =
-  do alias <- id1 `isSameArrayElement` id2
-     unless alias $ do
-       val1 <- evalLval (Just id2) id1
-       val2 <- evalLval (Just id1) id2
-       if typesMatch val1 val2
-         then setLval id2 val1 >> setLval id1 val2
-         else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
+  do val1 <- evalLval (Just id2) id1
+     val2 <- evalLval (Just id1) id2
+     if typesMatch val1 val2
+       then setLval id2 val1 >> setLval id1 val2
+       else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
   where
-    setLval (Var id) val = setVar id val
-    setLval (Lookup id idxExpr) (JInt val) =
+    setLval (Var idnt) val = setVar idnt val
+    setLval (Lookup idnt idxExpr) (JInt val) =
       do let ps = map getExprPos idxExpr
          idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr e)) $ zip idxExpr ps
-         (sIdx,arr) <- unpackArray pos =<< getVar id
+         (sIdx,arr) <- unpackArray pos =<< getVar idnt
          arrUpd <- arrayModify (head ps) sIdx arr idx val
-         setVar id $ JArray sIdx arrUpd
+         setVar idnt $ JArray sIdx arrUpd
     setLval _ val = 
       pos <!!> swapTypeError (showValueType val) "array"
-    Var x1 `isSameArrayElement` Var x2 = return False
-    Lookup x1 e1 `isSameArrayElement` Lookup x2 e2 =
-        do v1 <- mapM (evalModularExpr) e1
-           v2 <- mapM (evalModularExpr) e2
-           return $ x1 == x2 && v1 == v2
-    _ `isSameArrayElement` _ = error "Comparison of different types"
 evalStmt (UserError msg pos)          = pos <!!> userError msg
-evalStmt (Prints (Print msg) pos)     = liftIO $ putStrLn msg
+evalStmt (Prints (Print msg) _)       = liftIO $ putStrLn msg
 evalStmt (Prints (Printf msg []) pos) = evalStmts [Prints (Print msg) pos]
 evalStmt (Prints (Printf msg vars) pos) =
   do varList' <- varList
@@ -526,22 +512,22 @@ evalStmt (Prints (Printf msg vars) pos) =
         makeVarPair var =
           do val <- getVar var
              return (show val, showValueType val)
-evalStmt (Prints (Show vars) pos) =
+evalStmt (Prints (Show vars) _) =
   do strs <- mapM showVar vars
      liftIO $ putStrLn $ intercalate ", " strs
   where showVar :: Ident -> Eval String
         showVar var = liftM (printVdecl (ident var)) (getVar var)
 evalStmt (Skip _) = return ()
-evalStmt (Assert e pos) = assertTrue e
+evalStmt (Assert e _) = assertTrue e
 
 evalLval :: Maybe Lval -> Lval -> Eval Value
-evalLval lv (Var id) = checkLvalAlias lv (Var id) >> getVar id
-evalLval lv (Lookup id@(Ident _ pos) es) =
+evalLval lv (Var idnt) = checkLvalAlias lv (Var idnt) >> getVar idnt
+evalLval lv (Lookup idnt@(Ident _ pos) es) =
   do let ps = map getExprPos es
-     idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr e)) $ zip es ps
+     idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr' lv e)) $ zip es ps
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
-     checkLvalAlias lv (Lookup id idxVals)
-     arr <- unpackArray pos =<< getVar id
+     checkLvalAlias lv (Lookup idnt idxVals)
+     arr <- unpackArray pos =<< getVar idnt
      arrayLookup arr idx pos
 
 numberToModular :: Value -> Eval Value
@@ -557,32 +543,35 @@ numberToModular val = return val
 
 
 evalModularExpr :: Expr -> Eval Value
-evalModularExpr expr = evalExpr Nothing expr >>= numberToModular
+evalModularExpr expr = evalModularExpr' Nothing expr
+
+evalModularExpr' :: Maybe Lval -> Expr -> Eval Value
+evalModularExpr' lv expr = evalExpr lv expr >>= numberToModular
 
 evalModularAliasExpr :: Maybe Lval -> Expr -> Eval Value
 evalModularAliasExpr lv expr = evalExpr lv expr >>= numberToModular
 
 findAlias :: Ident -> Ident -> Eval ()
-findAlias id1 id2@(Ident _ pos) =
+findAlias idnt1 idnt2@(Ident _ pos) =
   do aliasSet <- asks aliases
-     when (isAlias aliasSet (ident id1) (ident id2)) $
-       pos <!!> aliasError id1 id2
+     when (isAlias aliasSet (ident idnt1) (ident idnt2)) $
+       pos <!!> aliasError idnt1 idnt2
 
 checkAlias :: Maybe Lval -> Ident -> Eval ()
 checkAlias Nothing _ = return ()
-checkAlias (Just (Var id)) id2 = findAlias id id2
-checkAlias (Just (Lookup id _)) id2 = findAlias id id2
+checkAlias (Just (Var idnt)) idnt2 = findAlias idnt idnt2
+checkAlias (Just (Lookup idnt _)) idnt2 = findAlias idnt idnt2
 
 checkLvalAlias :: Maybe Lval -> Lval -> Eval ()
 checkLvalAlias Nothing _ = return ()
-checkLvalAlias (Just (Var id)) (Var id2) = findAlias id id2
-checkLvalAlias (Just (Var id)) (Lookup id2 _) = findAlias id id2
-checkLvalAlias (Just (Lookup id _)) (Var id2) = findAlias id id2
-checkLvalAlias (Just (Lookup id exprn)) (Lookup id2 exprm) =
+checkLvalAlias (Just (Var idnt)) (Var idnt2) = findAlias idnt idnt2
+checkLvalAlias (Just (Var idnt)) (Lookup idnt2 _) = findAlias idnt idnt2
+checkLvalAlias (Just (Lookup idnt _)) (Var idnt2) = findAlias idnt idnt2
+checkLvalAlias (Just (Lookup idnt exprn)) (Lookup idnt2 exprm) =
   do n <- mapM (evalModularExpr) exprn
      m <- mapM (evalModularExpr) exprm
      if   n == m
-       then findAlias id id2
+       then findAlias idnt idnt2
        else return ()
 
 evalExpr :: Maybe Lval -> Expr -> Eval Value
@@ -607,20 +596,20 @@ evalExpr lv expr@(BinOp op e1 e2) = inExpression expr $
   do x <- evalModularAliasExpr lv e1
      y <- evalModularAliasExpr lv e2
      performOperation op x y (getExprPos e1) (getExprPos e2)
-evalExpr lv expr@(Top id pos) = inArgument "top" (ident id) $
-  do checkAlias lv id
-     stack <- unpackStack pos =<< getVar id
+evalExpr lv (Top idnt pos) = inArgument "top" (ident idnt) $
+  do checkAlias lv idnt
+     stack <- unpackStack pos =<< getVar idnt
      case stack of
-       (x:xs) -> return $ JInt x
-       []     -> return nil
-evalExpr lv expr@(Empty id pos) = inArgument "empty" (ident id) $
-  do checkAlias lv id
-     stack <- unpackStack pos =<< getVar id
+       (x:_) -> return $ JInt x
+       []    -> return nil
+evalExpr lv (Empty idnt pos) = inArgument "empty" (ident idnt) $
+  do checkAlias lv idnt
+     stack <- unpackStack pos =<< getVar idnt
      case stack of
        [] -> return $ JBool True
        _  -> return $ JBool False
-evalExpr _ expr@(Size id@(Ident _ pos) _) = inArgument "size" (ident id) $
-  do boxedVal <- getVar id
+evalExpr _ (Size idnt@(Ident _ pos) _) = inArgument "size" (ident idnt) $
+  do boxedVal <- getVar idnt
      case boxedVal of
        JArray (i:_) _ -> return $ JInt (toInteger i)
        JStack xs -> return $ JInt (toInteger $ length xs)
@@ -637,9 +626,9 @@ aliasExpr _  (Nil _)              = return ()
 aliasExpr lv (LV val _)           = checkLvalAlias lv val
 aliasExpr lv (UnaryOp Not e)      = aliasExpr lv e
 aliasExpr lv (BinOp _ e1 e2)      = aliasExpr lv e1 >> aliasExpr lv e2
-aliasExpr lv (Top ident pos)      = checkAlias lv ident
-aliasExpr lv (Empty ident pos)    = checkAlias lv ident
-aliasExpr lv (Size ident _)       = checkAlias lv ident
+aliasExpr lv (Top idnt _)         = checkAlias lv idnt
+aliasExpr lv (Empty idnt _)       = checkAlias lv idnt
+aliasExpr lv (Size idnt _)        = checkAlias lv idnt
 aliasExpr _  (UnaryOp FromLoop _) = error "FromLoop should have been extracted"
 aliasExpr _  (ArrayE _ _)         = return ()
 

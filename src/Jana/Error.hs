@@ -1,6 +1,5 @@
 module Jana.Error where
 
-import Control.Monad.Except
 import Data.List (intercalate, sort)
 import Text.Printf (printf)
 import Text.PrettyPrint
@@ -10,6 +9,7 @@ import Jana.Ast
 import Jana.Format
 
 
+joinlines :: [[Char]] -> [Char]
 joinlines = intercalate "\n"
 
 indent :: String -> String
@@ -102,17 +102,17 @@ addOnceErrorMessage msg err@(JanaError pos msgs)
     | otherwise = JanaError pos (msg : filter (msg /=) msgs)
 
 instance Show JanaError where
-  show err =
-    printf "%s:\n%s" introLine (showMsgs msgs)
-    where pos = errorPos err
-          introLine =
-            case (sourceName pos, sourceLine pos, sourceColumn pos) of
-              ("", 0, 0)        -> "Error"
-              (file, 0, 0)      -> "File \"" ++ file ++ "\""
-              ("-", line, col) ->
-                printf "Error in line %d, column %d" line col
-              (file, line, col) ->
-                printf "File \"%s\" in line %d, column %d" file line col
-          msgs = errorMessages err
-          showMsgs []   = indent "Unknown error occured"
-          showMsgs msgs = joinlines $ map (indent . show) msgs
+  show err = printf "%s:\n%s" introLine (showMsgs msgs)
+    where
+      pos = errorPos err
+      introLine =
+        case (sourceName pos, sourceLine pos, sourceColumn pos) of
+          ("", 0, 0)        -> "Error"
+          (file, 0, 0)      -> "File \"" ++ file ++ "\""
+          ("-", line, col) ->
+            printf "Error in line %d, column %d" line col
+          (file, line, col) ->
+            printf "File \"%s\" in line %d, column %d" file line col
+      msgs = errorMessages err
+      showMsgs []   = indent "Unknown error occured"
+      showMsgs ms = joinlines $ map (indent . show) ms
