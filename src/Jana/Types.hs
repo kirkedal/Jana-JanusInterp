@@ -144,9 +144,9 @@ performModOperation modOp = performOperation $ modOpToBinOp modOp
         modOpToBinOp SubEq = Sub
         modOpToBinOp XorEq = Xor
 
---
+--------------------------------------------------------------
 -- Environment
---
+--------------------------------------------------------------
 
 data EvalState = ES { breakPoints :: BreakPoints
                     , forwardExecution :: Bool
@@ -163,7 +163,9 @@ emptyStore = ES { breakPoints = Set.empty,
                   stepDebugging = False,
                   store = Map.empty}
 
--- Break points
+--------------------------------------------------------------
+-- Debugger commands
+--------------------------------------------------------------
 
 type BreakPoints = Set.Set Line
 
@@ -255,8 +257,9 @@ whenBackwardExecution f =
   do env <- get
      unless (forwardExecution env) f
 
-
+--------------------------------------------------------------
 -- Store
+--------------------------------------------------------------
 
 type Store = Map.Map String (IORef Value)
 
