@@ -17,6 +17,7 @@ import qualified Jana.JanusToC as JTC
 data Options = Options
   { timeOut :: Int
   , invert :: Bool
+  , ast :: Bool
   , cCode  :: Bool
   , header :: Maybe String
   , evalOpts :: EvalOptions }
@@ -25,6 +26,7 @@ defaults :: Options
 defaults = Options
   { timeOut = -1
   , invert = False
+  , ast = False
   , cCode = False
   , header = Nothing
   , evalOpts = defaultOptions }
@@ -37,6 +39,7 @@ usage = "usage: jana [options] <file>\n\
         \  -tN          timeout after N seconds\n\
         \  -i           print inverted program\n\
         \  -c           print C++ program\n\
+        \  -a           print program AST (useful for debugging)\n\
         \  -h=file.h    header files to be included in translation to C++\n\
         \                 this header files is intended use with external functions\n\
         \  -d           interactive debug mode\n\
@@ -77,6 +80,7 @@ addOption opts ('-':'t':time) =
   case reads time of
     [(timeVal, "")] -> return $ opts { timeOut = timeVal }
     _               -> Left "Non-number given to -t option"
+addOption opts "-a" = return opts { ast = True }
 addOption opts "-i" = return opts { invert = True }
 addOption opts "-c" = return opts { cCode = True }
 addOption opts ('-':'h':'=':headerfile) = return opts { header = Just headerfile }
@@ -96,6 +100,13 @@ printInverted filename =
      case parseProgram filename text of
        Left err   -> print err >> (exitWith $ ExitFailure 1)
        Right prog -> print $ invertProgram prog
+
+printAST :: String -> IO ()
+printAST filename =
+  do text <- loadFile filename
+     case parseProgram filename text of
+       Left err   -> print err >> (exitWith $ ExitFailure 1)
+       Right prog -> print prog
 
 printCcode :: String -> Maybe String -> IO ()
 printCcode filename headerfile =
@@ -123,6 +134,7 @@ main = do args <- parseArgs
           case args of
             Just ([file], Options { cCode = True, invert = True, header = h }) -> printInvertedCcode file h
             Just ([file], Options { cCode = True, header = h }) -> printCcode file h
+            Just ([file], Options { ast = True }) -> printAST file
             Just ([file], Options { invert = True }) -> printInverted file
             Just ([file], opts) ->
               do res <- timeout (timeOut opts * 1000000)

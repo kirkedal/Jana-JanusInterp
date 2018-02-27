@@ -75,10 +75,10 @@ data Stmt
     | Push      Ident Ident SourcePos
     | Pop       Ident Ident SourcePos
     | Local     LocalDecl [Stmt] LocalDecl SourcePos
-    | Call      Ident [Ident] SourcePos
-    | Uncall    Ident [Ident] SourcePos
-    | ExtCall   Ident [Ident] SourcePos
-    | ExtUncall Ident [Ident] SourcePos
+    | Call      Ident [Argument] SourcePos
+    | Uncall    Ident [Argument] SourcePos
+    | ExtCall   Ident [Argument] SourcePos
+    | ExtUncall Ident [Argument] SourcePos
     | UserError String SourcePos
     | Swap      Lval Lval SourcePos
     | Prints    Prints SourcePos
@@ -87,6 +87,11 @@ data Stmt
     | Skip      SourcePos
     | Assert    Expr SourcePos
     | Debug     DebugType SourcePos
+    deriving (Eq)
+
+data Argument
+    = VarArg Ident
+    | ArrayArg Ident [Ident]
     deriving (Eq)
 
 -- Local Declaration

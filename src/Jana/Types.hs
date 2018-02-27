@@ -1,11 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Jana.Types (
-    Array, Stack, Index,
+    Array, Stack, Index, StoreEntry,
     Value(..), nil, performOperation, performModOperation,
     showValueType, typesMatch, truthy, findIndex,
     Store, printVdecl, showStore, emptyStore, storeFromList, putStore, getStore,
-    getRef, getVar, getRefValue, bindVar, unbindVar, setVar,
+    getRefVal, getEntry, getVar, getRefValue, bindVar, unbindVar, setVar,
     EvalEnv(..),
     EvalOptions(..), defaultOptions, DebugMode(..),
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
@@ -37,6 +37,8 @@ import Jana.Aliases
 import Jana.Ast
 import Jana.Error
 import Jana.ErrorMessages
+
+import Debug.Trace (trace)
 
 type Array = [Integer]
 type Stack = [Integer]
@@ -122,6 +124,7 @@ opFunc GE   = wrap JBool (>=)
 opFunc LE   = wrap JBool (<=)
 
 performOperation :: BinOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
+--performOperation modOp v1 v2 _ _ | trace ("binOp " ++ show v1 ++ " " ++ show modOp ++ " " ++ show v2) False = undefined
 performOperation Div (JInt _) (JInt 0) _ pos =
   pos <!!> divisionByZero
 performOperation Div (JInt x) (JInt y) _ _ =
@@ -139,7 +142,8 @@ performOperation _ val _ pos _ =
   pos <!!> typeMismatch ["int"] (showValueType val)
 
 performModOperation :: ModOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
-performModOperation modOp = performOperation $ modOpToBinOp modOp
+-- performModOperation modOp v1 v2 _ _ | trace ("modOp " ++ show v1 ++ " " ++ show modOp ++ " " ++ show v2) False = undefined
+performModOperation modOp a b c d = performOperation (modOpToBinOp modOp) a b c d
   where modOpToBinOp AddEq = Add
         modOpToBinOp SubEq = Sub
         modOpToBinOp XorEq = Xor
@@ -261,7 +265,8 @@ whenBackwardExecution f =
 -- Store
 --------------------------------------------------------------
 
-type Store = Map.Map String (IORef Value)
+type StoreEntry = (IORef Value, Index)
+type Store = Map.Map String StoreEntry
 
 getStore :: Eval Store
 getStore =
@@ -280,25 +285,45 @@ printVdecl name val = printf "%s = %s" name (show val)
 showStore :: EvalState -> IO String
 showStore s =
   liftM (intercalate "\n")
-        (mapM (\(name, ref) -> liftM (printVdecl name) (readIORef ref))
+        (mapM (\(name, (ref,_)) -> liftM (printVdecl name) (readIORef ref))
               (Map.toList (store s)))
 
-storeFromList :: [(String, IORef Value)] -> Store
+storeFromList :: [(String, (IORef Value, Index))] -> Store
 storeFromList = Map.fromList
 
-getRef :: Ident -> Eval (IORef Value)
-getRef (Ident name pos) =
+getEntry :: Ident -> Eval StoreEntry
+getEntry (Ident name pos) =
   do evalS <- get
      let storeEnv = store evalS
      case Map.lookup name storeEnv of
        Just ref -> return ref
        Nothing  -> pos <!!> unboundVar name
 
+-- getRef :: Ident -> Eval (IORef Value)
+-- getRef idnt = getRef idnt >>= liftIO . readIORef
+
+getRefVal :: Ident -> Eval Value
+getRefVal idnt =
+  do (r,i) <- getEntry idnt
+     getRefValue r
+
 getVar :: Ident -> Eval Value
-getVar idnt = getRef idnt >>= liftIO . readIORef
+getVar idnt =
+  do (r,i) <- getEntry idnt
+     v <- getRefValue r
+     return $ indexValue i v
 
 getRefValue :: IORef Value -> Eval Value
 getRefValue = liftIO . readIORef
+
+indexValue :: Index -> Value -> Value
+indexValue [] v = v
+indexValue [i] (JArray [idx] array) | i < idx = JInt $ head $ drop (fromInteger i) array
+indexValue (i:is) (JArray (idx:idxs) array) | i < idx =
+  indexValue is (JArray idxs (take (idxSize) $ drop ((fromInteger i)*idxSize) array))
+  where
+    idxSize = div (length array) (fromInteger idx)
+
 
 -- Bind a variable name to a new reference
 bindVar :: Ident -> Value -> Eval ()
@@ -307,7 +332,7 @@ bindVar (Ident name pos) val =
      let storeEnv = store evalS
      ref <- liftIO $ newIORef val
      case Map.lookup name storeEnv of
-       Nothing  -> put $ evalS {store = Map.insert name ref storeEnv}
+       Nothing  -> put $ evalS {store = Map.insert name (ref, []) storeEnv}
        Just _   -> pos <!!> alreadyBound name
 
 unbindVar :: Ident -> Eval ()
@@ -319,9 +344,18 @@ unbindVar i =
 -- Set the value of a variable (modifying the reference)
 setVar :: Ident -> Value -> Eval ()
 setVar idnt val =
-  do ref <- getRef idnt
-     liftIO $ writeIORef ref val
+  do (ref, i) <- getEntry idnt
+     curV <- getRefValue ref
+     liftIO $ writeIORef ref $ updValue i curV val
 
+updValue :: Index -> Value -> Value -> Value
+-- updValue i v1 v2 | trace ("updValue index: " ++ show i ++ " " ++ show v1 ++ " " ++ show v2) False = undefined
+updValue _ _ v = v
+-- This was not needed anyway. 
+-- updValue is (JInt val) (JArray idxs array) = 
+--   case findIndex is idxs of
+--     Nothing  -> error ""
+--     (Just i) -> JArray idxs (take (fromInteger i) array ++ [val] ++ (drop ((fromInteger i)+1) array))
 
 -- Reader
 

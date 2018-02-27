@@ -146,16 +146,16 @@ formatStmt (Local decl1 s decl2 _) =
   text "delocal" <+> formatLocalDecl decl2
 
 formatStmt (Call id args _) =
-  text "call" <+> formatIdent id <> parens (commasep $ map formatIdent args)
+  text "call" <+> formatIdent id <> parens (commasep $ map formatArgument args)
 
 formatStmt (Uncall id args _) =
-  text "uncall" <+> formatIdent id <> parens (commasep $ map formatIdent args)
+  text "uncall" <+> formatIdent id <> parens (commasep $ map formatArgument args)
 
 formatStmt (ExtCall id args _) =
-  text "call external" <+> formatIdent id <> parens (commasep $ map formatIdent args)
+  text "call external" <+> formatIdent id <> parens (commasep $ map formatArgument args)
 
 formatStmt (ExtUncall id args _) =
-  text "uncall external" <+> formatIdent id <> parens (commasep $ map formatIdent args)
+  text "uncall external" <+> formatIdent id <> parens (commasep $ map formatArgument args)
 
 formatStmt (Swap id1 id2 _) =
   formatLval id1 <+> text "<=>" <+> formatLval id2
@@ -184,6 +184,8 @@ formatStmt (Assert e _) =
 formatStmt (Debug _ _) =
   text ""
 
+formatArgument (VarArg i) = formatIdent i
+formatArgument (ArrayArg a i) = formatIdent a <> (brackets $ commasep (map formatIdent i))
 
 formatStmtsAbbrv []         = empty
 formatStmtsAbbrv [If {}]    = text "..."
@@ -261,6 +263,9 @@ instance Show Vdecl where
 
 instance Show Proc where
   show = render . formatProc
+
+instance Show Argument where
+  show = render . formatArgument
 
 instance Show ProcMain where
   show = render . formatMain

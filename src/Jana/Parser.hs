@@ -322,19 +322,26 @@ uncallStmt =
     callType Nothing  pname pos = (\a -> Uncall pname a pos)
     callType (Just _) pname pos = (\a -> ExtUncall pname a pos)
 
-formatArgumentList :: [Expr] -> ([Ident] -> Stmt) -> Parser Stmt
+formatArgumentList :: [Expr] -> ([Argument] -> Stmt) -> Parser Stmt
 formatArgumentList args_expr stmtFun =
   do pos   <- getPosition
      args_map <- mapM chkExpression args_expr
      let (args,exprs) = unzip args_map
-     return $ foldr (foldFun pos) (stmtFun args) exprs
+     return $ foldr (foldFun pos) (stmtFun args) $ concat exprs
   where
-    chkExpression (LV (Var i) _) = return (i, Nothing)
+    chkExpression (LV (Var i) _) = return (VarArg i, [Nothing])
+    chkExpression (LV (Lookup i exprs) _) =
+      do fs <- mapM freshExpr exprs
+         let r = map (\(x,y) -> Just (x, y)) $ zip fs exprs
+         return (ArrayArg i fs, r)
     chkExpression expr =
       do f <- getFreshVar
-         return (f, Just((f,expr)))
+         return (VarArg f, [Just (f,expr)])
     foldFun _  Nothing    stmt = stmt
     foldFun p (Just(i,e)) stmt = Local (LocalVar (Int p) i (Just e) p) [stmt] (LocalVar (Int p) i (Just e) p) p
+    freshExpr expr =
+      do f <- getFreshVar
+         return f
 
 swapStmt :: Parser Stmt
 swapStmt =

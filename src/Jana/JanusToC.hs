@@ -1,3 +1,4 @@
+
 module Jana.JanusToC where
 
 import Prelude hiding (GT, LT, EQ)
@@ -38,6 +39,11 @@ formatIdent (Pointer n) idnt = text (replicate n '*') <> text (ident idnt)
 formatLval :: Lval -> Doc
 formatLval (Var idnt) = formatIdent Value idnt
 formatLval (Lookup idnt expr) = formatIdent Value idnt <> cat (map (\e -> brackets $ formatExpr e) expr)
+
+formatArgument :: Argument -> Doc
+formatArgument (VarArg i) = formatIdent Value i
+formatArgument (ArrayArg a i) = formatIdent Value a <> (brackets $ commasep (map (formatIdent Value) i))
+
 
 formatModOp :: ModOp -> Doc
 formatModOp AddEq = text "+="
@@ -140,13 +146,13 @@ formatStmt (Local decl1 s decl2 _) =
   formatStmts s $+$
   formatAssertLocalDecl decl2
 formatStmt (Call idnt args _) =
-  formatIdent Forward idnt <> parens (commasep $ map (formatIdent Value) args) <> semi
+  formatIdent Forward idnt <> parens (commasep $ map formatArgument args) <> semi
 formatStmt (Uncall idnt args _) =
-  formatIdent Reverse idnt <> parens (commasep $ map (formatIdent Value) args) <> semi
+  formatIdent Reverse idnt <> parens (commasep $ map formatArgument args) <> semi
 formatStmt (ExtCall idnt args _) =
-  formatIdent Forward idnt <> parens (commasep $ map (formatIdent Value) args) <> semi
+  formatIdent Forward idnt <> parens (commasep $ map formatArgument args) <> semi
 formatStmt (ExtUncall idnt args _) =
-  formatIdent Reverse idnt <> parens (commasep $ map (formatIdent Value) args) <> semi
+  formatIdent Reverse idnt <> parens (commasep $ map formatArgument args) <> semi
 formatStmt (Swap id1 id2 p) =
   formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
 formatStmt (UserError msg _) =

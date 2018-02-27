@@ -165,13 +165,13 @@ runProgramAfterDBcheck _ _ = error ""
 
 sizeEstimate :: Expr -> Index
 sizeEstimate (ArrayE a _) = (toInteger $ length a):(sizeEstimate $ head a)
-sizeEstimate _            = [] 
+sizeEstimate _            = []
 
 flattenArray :: SourcePos -> Index -> Expr -> Eval [Expr]
 flattenArray _ [] (ArrayE _ pos) = pos <!!> arraySize
 flattenArray _ [] e              = return [e]
 flattenArray _ (s:sIdx) (ArrayE a pos)
-  | s >= size = 
+  | s >= size =
       do es <- liftM concat $ mapM (flattenArray pos sIdx) a
          return $ genericTake (product (s:sIdx)) $ es ++ (repeat $ Number 0 pos)
   | otherwise                    = pos <!!> arraySize
@@ -225,7 +225,7 @@ evalMain (ProcMain vdecls mainbody _) =
          bindVar idnt $ JArray sizeInt valsI
 
 
-evalProc :: Proc -> [Ident] -> Eval ()
+evalProc :: Proc -> [Argument] -> Eval ()
 evalProc proc args = inProcedure proc $
   do checkNumArgs (length vdecls) (length args)
      checkArgTypes
@@ -235,35 +235,67 @@ evalProc proc args = inProcedure proc $
      local updateAliases (evalStmts $ body proc)
      putStore oldStore
   where
+    vdecls :: [Vdecl]
     vdecls = params proc
-    refs = mapM getRef args
+    storeEnts = mapM makeEntFromArg args
+    makeEntFromArg :: Argument -> Eval StoreEntry
+    makeEntFromArg (VarArg ident) = getEntry ident
+    makeEntFromArg (ArrayArg ident idxIndents) =
+      do (r,i)   <- getEntry ident
+         idxVals <- mapM getVar idxIndents
+         return (r, i ++ (map fromValue idxVals))
+    fromValue :: Value -> Integer
+    fromValue (JInt v) = v
+    fromValue x = error $ (show x) ++ " is not a integer value."
+    argids = map argumentIdents args
+    argumentIdents :: Argument -> Ident
+    argumentIdents (VarArg i) = i
+    argumentIdents (ArrayArg i _) = i
     procPos Proc { procname = Ident _ pos } = pos
     checkNumArgs expArgs gotArgs =
       when (expArgs /= gotArgs) $
         procPos proc <!!> argumentError proc expArgs gotArgs
-    checkArg (vdecl, ref) = inArgument (ident proc) (ident $ getVdeclIdent vdecl) $
-      getRefValue ref >>= checkVdecl vdecl
+    checkArg :: (Vdecl, Argument) -> Eval ()
+    checkArg (vdecl, arg) = inArgument (ident proc) (ident $ getVdeclIdent vdecl) $
+      (getArgValue arg >>= checkVdecl vdecl)
+    checkArgTypes :: Eval ()
     checkArgTypes =
-      liftM (zip vdecls) refs >>= mapM_ checkArg
-    localStore =
-      liftM (storeFromList . zip (map (ident . getVdeclIdent) vdecls)) refs
+      do let va = zip vdecls args
+         mapM_ checkArg va
+    localStore = liftM (storeFromList . zip (map (ident . getVdeclIdent) vdecls)) storeEnts
     getVdeclIdent (Scalar _ idnt _ _) = idnt
     getVdeclIdent (Array idnt _ _ _)  = idnt
     updateAliases env =
-      let xs = zip (map ident args) (map ident vdecls) in
+      let xs = zip (map ident argids) (map ident vdecls) in
         env { aliases = introAndPropAliases xs (aliases env) }
+    getArgValue :: Argument -> Eval Value
+    getArgValue (VarArg i) = getVar i
+    getArgValue (ArrayArg a is) =
+      do v <- getVar a
+         checkArrayType v
+         let (JArray size _ ) = v
+         checkNumArgs (length size) (length is)
+         -- Check that all is is INT
+         return $ JInt 0
+    checkArrayType (JArray _ _) = return ()
+    checkArrayType a = procPos proc <!!> typeError "Array argument error"
 
 assignLval :: ModOp -> Lval -> Expr -> SourcePos -> Eval ()
-assignLval modOp lv@(Var idnt) expr _ =
-  do exprVal <- evalModularAliasExpr (Just lv) expr
-     varVal  <- getVar idnt
-     val <- performModOperation modOp varVal exprVal exprPos exprPos >>= numberToModular
-     setVar idnt val
-  where exprPos = getExprPos expr
+assignLval modOp lv@(Var idnt) expr pos =
+  do (_,indx) <- getEntry idnt
+     case indx of
+       [] ->
+         do exprVal <- evalModularAliasExpr (Just lv) expr
+            varVal  <- getVar idnt
+            val <- performModOperation modOp varVal exprVal exprPos exprPos >>= numberToModular
+            setVar idnt val
+       i -> assignLval modOp (Lookup idnt (map (\x -> Number x pos) i)) expr pos
+  where
+    exprPos = getExprPos expr
 assignLval modOp (Lookup idnt idxExpr) expr pos =
   do let ps      = map getExprPos idxExpr
-     idx         <- mapM (\(e, p) -> (unpackInt p =<< evalModularAliasExpr (Just $ Var idnt) e)) $ zip idxExpr ps 
-     (sIdx,arr)  <- unpackArray pos =<< getVar idnt
+     idx         <- mapM (\(e, p) -> (unpackInt p =<< evalModularAliasExpr (Just $ Var idnt) e)) $ zip idxExpr ps
+     (sIdx,arr)  <- unpackArray pos =<< getRefVal idnt
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
      val    <- evalModularAliasExpr (Just $ Lookup idnt idxVals) expr
      oldval <- arrayLookup (sIdx,arr) idx pos
