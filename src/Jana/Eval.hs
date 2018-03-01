@@ -27,6 +27,7 @@ import Jana.ErrorMessages
 import Jana.Printf
 import Jana.Debug
 
+-- import Debug.Trace (trace)
 
 inArgument :: String -> String -> Eval a -> Eval a
 inArgument funid argid monad = catchError monad $
@@ -51,6 +52,7 @@ unpackInt _ (JInt x) = return x
 unpackInt pos val = pos <!!> typeMismatch ["int"] (showValueType val)
 
 unpackArray :: SourcePos -> Value -> Eval (Index, Array)
+-- unpackArray _ v | trace ("unpackArray " ++ show v) False = undefined
 unpackArray _ (JArray i x) = return (i,x)
 unpackArray pos val = pos <!!> typeMismatch ["array"] (showValueType val)
 
@@ -281,6 +283,7 @@ evalProc proc args = inProcedure proc $
     checkArrayType a = procPos proc <!!> typeError "Array argument error"
 
 assignLval :: ModOp -> Lval -> Expr -> SourcePos -> Eval ()
+-- assignLval modOp lval expr _ | trace ("assignLval " ++ show lval ++ " " ++ show modOp ++ " " ++ show expr) False = undefined
 assignLval modOp lv@(Var idnt) expr pos =
   do (_,indx) <- getEntry idnt
      case indx of
@@ -557,13 +560,18 @@ evalStmt (Skip _) = return ()
 evalStmt (Assert e _) = assertTrue e
 
 evalLval :: Maybe Lval -> Lval -> Eval Value
-evalLval lv (Var idnt) = checkLvalAlias lv (Var idnt) >> getVar idnt
+-- evalLval lval lval2 | trace ("evalLval " ++ show lval2 ++ " (" ++ show lval ++ ")") False = undefined
+evalLval lv (Var idnt@(Ident _ pos)) = 
+  do (_, indx) <- getEntry idnt
+     case indx of
+       [] -> checkLvalAlias lv (Var idnt) >> getVar idnt
+       i  -> evalLval lv (Lookup idnt (map (\x -> Number x pos) i))
 evalLval lv (Lookup idnt@(Ident _ pos) es) =
   do let ps = map getExprPos es
      idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr' lv e)) $ zip es ps
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
      checkLvalAlias lv (Lookup idnt idxVals)
-     arr <- unpackArray pos =<< getVar idnt
+     arr <- unpackArray pos =<< getRefVal idnt
      arrayLookup arr idx pos
 
 numberToModular :: Value -> Eval Value
