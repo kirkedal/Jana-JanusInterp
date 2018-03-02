@@ -4,7 +4,7 @@ module Jana.Types (
     Array, Stack, Index, StoreEntry,
     Value(..), nil, performOperation, performModOperation,
     showValueType, typesMatch, truthy, findIndex,
-    Store, printVdecl, showStore, emptyStore, storeFromList, putStore, getStore,
+    Store, printVdecl, showCurrentStore, showStore, emptyStore, storeFromList, putStore, getStore,
     getRefVal, getEntry, getVar, getRefValue, bindVar, unbindVar, setVar,
     EvalEnv(..),
     EvalOptions(..), defaultOptions, DebugMode(..),
@@ -287,6 +287,18 @@ showStore s =
   liftM (intercalate "\n")
         (mapM (\(name, (ref,_)) -> liftM (printVdecl name) (readIORef ref))
               (Map.toList (store s)))
+
+showCurrentStore :: Eval String
+showCurrentStore =
+  do evalS <- get
+     let storeEnv = store evalS
+         sList = Map.toList storeEnv
+     ents <- mapM mapFun sList
+     return $ intercalate "\n" ents
+  where
+    mapFun (s,(r,_)) =
+      do v <- getRefValue r
+         return $ printVdecl s v
 
 storeFromList :: [(String, (IORef Value, Index))] -> Store
 storeFromList = Map.fromList
