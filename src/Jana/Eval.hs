@@ -386,10 +386,11 @@ parseDBCommand pos str          = (liftIO $ putStrLn errorTxt) >> makeBreak pos
 
 catchDebugError :: JanaError  -> Eval ()
 catchDebugError msg =
-  whenDebugging
-    (liftIO $ putStrLn $ "[Break: ERROR (line " ++ (show $ sourceLine $ errorPos msg) ++ ")]") >>
+  whenDebuggingElse
+    ((liftIO $ putStrLn $ "[Break: ERROR (line " ++ (show $ sourceLine $ errorPos msg) ++ ")]") >>
       (liftIO $ putStrLn $ show (errorMessages msg)) >>
-      makeBreak (errorPos msg)
+      makeBreak (errorPos msg))
+    ((liftIO $ putStrLn $ show (errorMessages msg)) >> (liftIO $ exitWith (ExitFailure 1)))
 
 dbUsage :: String
 dbUsage = "Usage of the jana debugger\n\
