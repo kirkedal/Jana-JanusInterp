@@ -7,6 +7,7 @@ module Jana.Eval (
 
 
 import Prelude hiding (GT, LT, EQ, userError)
+import qualified Prelude as P (Ordering(GT), Ordering(LT), Ordering(EQ))
 import System.Exit
 import System.IO
 import Data.Char (toLower, isSpace)
@@ -93,6 +94,7 @@ checkTypeInt pos val      = pos <!!> typeMismatch ["int"] (showValueType val)
 
 -- This is likely to be wrong
 checkVdecl :: Vdecl -> Value -> Eval ()
+-- checkVdecl vdecl val | trace ("checkVdecl " ++ show vdecl ++ " -> " ++ show val) False = undefined
 checkVdecl (Scalar Int {}   _ _ _)  (JInt _)     = return ()
 checkVdecl (Scalar Stack {} _ _ _)  (JStack _)   = return ()
 checkVdecl (Array _ []  _ _)   (JArray _ _) = return ()
@@ -255,15 +257,14 @@ evalProc proc args = inProcedure proc $
     argumentIdents (ArrayArg i _) = i
     procPos Proc { procname = Ident _ pos } = pos
     checkNumArgs expArgs gotArgs =
-      when (expArgs /= gotArgs) $
-        procPos proc <!!> argumentError proc expArgs gotArgs
-    checkArg :: (Vdecl, Argument) -> Eval ()
-    checkArg (vdecl, arg) = inArgument (ident proc) (ident $ getVdeclIdent vdecl) $
-      (getArgValue arg >>= checkVdecl vdecl)
+      when (expArgs /= gotArgs) $ procPos proc <!!> argumentError proc expArgs gotArgs
     checkArgTypes :: Eval ()
     checkArgTypes =
       do let va = zip vdecls args
          mapM_ checkArg va
+    checkArg :: (Vdecl, Argument) -> Eval ()
+    checkArg (vdecl, arg) = inArgument (ident proc) (ident $ getVdeclIdent vdecl) $
+      (getArgValue arg >>= checkVdecl vdecl)
     localStore = liftM (storeFromList . zip (map (ident . getVdeclIdent) vdecls)) storeEnts
     getVdeclIdent (Scalar _ idnt _ _) = idnt
     getVdeclIdent (Array idnt _ _ _)  = idnt
@@ -275,10 +276,12 @@ evalProc proc args = inProcedure proc $
     getArgValue (ArrayArg a is) =
       do v <- getVar a
          checkArrayType v
-         let (JArray size _ ) = v
-         checkNumArgs (length size) (length is)
-         -- Check that all is is INT
-         return $ JInt 0
+         let (JArray size a ) = v
+         case compare (length size) (length is) of
+           -- LT -> procPos proc <!!> arraySizeMismatch argumentError (length size) (length is)
+           P.LT -> error "size of array"
+           P.EQ -> return $ JInt 0
+           P.GT -> return $ JArray (drop (length is) size) a
     checkArrayType (JArray _ _) = return ()
     checkArrayType a = procPos proc <!!> typeError "Array argument error"
 
@@ -292,11 +295,13 @@ assignLval modOp lv@(Var idnt) expr pos =
             varVal  <- getVar idnt
             val <- performModOperation modOp varVal exprVal exprPos exprPos >>= numberToModular
             setVar idnt val
-       i -> assignLval modOp (Lookup idnt (map (\x -> Number x pos) i)) expr pos
+       _ -> assignLval modOp (Lookup idnt []) expr pos
   where
     exprPos = getExprPos expr
-assignLval modOp (Lookup idnt idxExpr) expr pos =
-  do let ps      = map getExprPos idxExpr
+assignLval modOp (Lookup idnt idxE) expr pos =
+  do (_, indx) <- getEntry idnt
+     let idxExpr = (map (\x -> Number x pos) indx) ++ idxE
+     let ps      = map getExprPos idxExpr
      idx         <- mapM (\(e, p) -> (unpackInt p =<< evalModularAliasExpr (Just $ Var idnt) e)) $ zip idxExpr ps
      (sIdx,arr)  <- unpackArray pos =<< getRefVal idnt
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
@@ -565,10 +570,12 @@ evalLval lv (Var idnt@(Ident _ pos)) =
   do (_, indx) <- getEntry idnt
      case indx of
        [] -> checkLvalAlias lv (Var idnt) >> getVar idnt
-       i  -> evalLval lv (Lookup idnt (map (\x -> Number x pos) i))
+       i  -> evalLval lv (Lookup idnt [])
 evalLval lv (Lookup idnt@(Ident _ pos) es) =
-  do let ps = map getExprPos es
-     idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr' lv e)) $ zip es ps
+  do (_, indx) <- getEntry idnt
+     let es_ext = (map (\x -> Number x pos) indx) ++ es
+     let ps = map getExprPos es_ext
+     idx <- mapM (\(e, p) -> (unpackInt p =<< evalModularExpr' lv e)) $ zip es_ext ps
      let idxVals = map (\(i,p) -> Number i p) $ zip idx ps
      checkLvalAlias lv (Lookup idnt idxVals)
      arr <- unpackArray pos =<< getRefVal idnt
