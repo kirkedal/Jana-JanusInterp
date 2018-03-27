@@ -30,6 +30,7 @@ formatModOp XorEq = text "^="
 -- Should match the operator table in Jana.Parser
 unaryOpMap = Map.fromList [
     (Not,  ("!",  5))
+    (BwNeg,("~",  5))
   ]
 binOpMap = Map.fromList [
     (Mul , ("*",  4))

@@ -12,6 +12,7 @@ import System.Exit
 import System.IO
 import Data.Char (toLower, isSpace)
 import Data.List (genericSplitAt, intercalate, genericTake,  genericIndex)
+import Data.Bits (complement)
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Except
@@ -636,6 +637,9 @@ evalExpr lv expr@(LV val _)   = inExpression expr $ evalLval lv val
 evalExpr lv expr@(UnaryOp Not e) = inExpression expr $
   do x <- unpackBool (getExprPos e) =<< evalModularAliasExpr lv e
      return $ JBool $ not x
+evalExpr lv expr@(UnaryOp BwNeg e) = inExpression expr $
+  do x <- unpackInt (getExprPos e) =<< evalModularAliasExpr lv e
+     return $ JInt $ complement x
 evalExpr lv expr@(BinOp LAnd e1 e2) = inExpression expr $
   do x <- unpackBool (getExprPos e1) =<< evalModularAliasExpr lv e1
      if x

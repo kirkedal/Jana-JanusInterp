@@ -481,8 +481,10 @@ binOperators = [ [ notChain
   where binop  op f   = Infix (reservedOp op >> return (BinOp f)) AssocLeft
         binop' op f n = Infix (try $ reservedOp op >> notFollowedBy (char n) >>
                                        return (BinOp f)) AssocLeft
-        notChain      = Prefix $ chainl1 notOp $ return (.)
+        notChain      = Prefix $ chainl1 unOp $ return (.)
+        unOp          = notOp <|> negOp
         notOp         = symbol "!" >> return (UnaryOp Not)
+        negOp         = symbol "~" >> return (UnaryOp BwNeg)
 
 parseString :: Parser a -> String -> a
 parseString parser str =
