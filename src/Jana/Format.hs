@@ -131,7 +131,7 @@ formatStmt (From e1 s1 s2 e2 _) =
 
 formatStmt (Iterate  typ ident startE stepE endE stmts _) =
   text "iterate" <+> formatType typ <+> formatIdent ident <+> text "=" <+> formatExpr startE <+>
-    text "by" <+> formatExpr stepE <+> text "until" <+> formatExpr endE $+$
+    text "by" <+> formatExpr stepE <+> text "to" <+> formatExpr endE $+$
     nest 4 (formatStmts stmts) $+$
     text "end"
 
