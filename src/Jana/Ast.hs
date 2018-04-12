@@ -57,6 +57,7 @@ data UnaryOp
 data BinOp
     = Add | Sub | Mul | Div | Mod | Exp  -- Arithmetic (+ - * / % **)
     | And | Or | Xor                     -- Binary (& | ^)
+    | SL | SR                            -- Shift (<< | >>)
     | LAnd | LOr                         -- Logical (&& ||)
     | GT | LT | EQ | NEQ | GE | LE       -- Relational (> < = != >= <=)
     deriving (Eq, Ord, Show)

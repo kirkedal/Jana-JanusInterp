@@ -463,6 +463,9 @@ binOperators = [ [ notChain
                , [ binop  "+"   Add
                  , binop  "-"   Sub
                  ]
+               , [ binop  "<<"  SL
+                 , binop  ">>"  SR
+                 ]
                , [ binop  "<="  LE
                  , binop  "<"   LT
                  , binop  ">="  GE
