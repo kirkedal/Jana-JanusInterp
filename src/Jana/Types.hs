@@ -429,7 +429,7 @@ getEntry (Ident name pos) =
 
 getRefVal :: Ident -> Eval Value
 getRefVal idnt =
-  do (r,i) <- getEntry idnt
+  do (r,_) <- getEntry idnt
      getRefValue r
 
 getVar :: Ident -> Eval Value
@@ -448,7 +448,7 @@ indexValue (i:is) (JArray (idx:idxs) array) | i < idx =
   indexValue is (JArray idxs (take (idxSize) $ drop ((fromInteger i)*idxSize) array))
   where
     idxSize = div (length array) (fromInteger idx)
-
+indexValue _ _ = undefined "Indexing non-array value"
 
 -- Bind a variable name to a new reference
 bindVar :: Ident -> Value -> Eval ()
