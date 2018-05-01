@@ -28,7 +28,7 @@ injectDBStmt (If e1 ifPart elsePart e2 pos) =
   [Debug Normal pos, If e1 (injectDBStmts ifPart) (injectDBStmts elsePart) e2 pos]
 injectDBStmt (From e1 doPart loopPart e2 pos) =
   [Debug Normal pos, From e1 (injectDBStmts doPart) (injectDBStmts loopPart) e2 pos]
-injectDBStmt (Local assign1 body assign2 pos) =
-  [Debug Normal pos, Local assign1 (injectDBStmts body) assign2 pos]
+injectDBStmt (Local assign1 locbody assign2 pos) =
+  [Debug Normal pos, Local assign1 (injectDBStmts locbody) assign2 pos]
 injectDBStmt stmt = [Debug Normal (stmtPos stmt), stmt]
 

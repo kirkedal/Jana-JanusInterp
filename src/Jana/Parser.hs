@@ -355,7 +355,7 @@ formatArgumentList args_expr stmtFun =
          return (VarArg f, [Just (f,expr)])
     foldFun _  Nothing    stmt = stmt
     foldFun p (Just(i,e)) stmt = Local (LocalVar (Int Unbound p) i (Just e) p) [stmt] (LocalVar (Int Unbound p) i (Just e) p) p
-    freshExpr expr =
+    freshExpr _ =
       do f <- getFreshVar
          return f
 

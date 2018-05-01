@@ -161,15 +161,15 @@ class Identifiable a where
   ident :: a -> String
 
 instance Identifiable Ident where
-  ident (Ident id _) = id
+  ident (Ident idnt _) = idnt
 
 instance Identifiable Lval where
-  ident (Var id) = ident id
-  ident (Lookup id _) = ident id
+  ident (Var idnt) = ident idnt
+  ident (Lookup idnt _) = ident idnt
 
 instance Identifiable Vdecl where
-  ident (Scalar _ id _ _) = ident id
-  ident (Array  _ id _ _ _) = ident id
+  ident (Scalar _ idnt _ _) = ident idnt
+  ident (Array  _ idnt _ _ _) = ident idnt
 
 instance Identifiable ProcMain where
   ident _ = "main"

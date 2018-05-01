@@ -27,6 +27,7 @@ formatType (Int it _)   = formatIntType it
 formatType (Stack _) = error "Stack not supported in C Translation"
 formatType (BoolT _) = error "Stack not supported in C Translation"
 
+formatIntType :: IntType -> Doc
 formatIntType Unbound = text "int"
 formatIntType I8      = text "signed char"
 formatIntType I16     = text "signed short"
