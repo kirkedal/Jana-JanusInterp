@@ -3,7 +3,7 @@ FILES=Main.hs Jana/*.hs
 all: main
 
 warn: $(FILES)
-	ghc -Wall -fno-warn-unused-do-bind --make Main.hs
+	ghc -Wall -fno-warn-orphans -fno-warn-unused-do-bind --make Main.hs
 
 main: $(FILES)
 	ghc --make Main.hs
