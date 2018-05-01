@@ -49,9 +49,17 @@ janaDef = Token.LanguageDef {
               , Token.reservedOpNames  = []
               , Token.reservedNames    = [ "procedure"
                                          , "int"
+                                         , "i8"
+                                         , "i16"
+                                         , "i32"
+                                         , "i64"
+                                         , "u8"
+                                         , "u16"
+                                         , "u32"
+                                         , "u64"
                                          , "stack"
                                          , "bool"
-                                         , "true"
+                                         , "t rue"
                                          , "false"
                                          , "if"
                                          , "then"
@@ -151,7 +159,7 @@ mainvdecl =
      mytype <- atype
      idnt  <- identifier
      case mytype of
-       (Int _) -> liftM2 (\x y -> (Array idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
+       (Int itype _) -> liftM2 (\x y -> (Array itype idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
               <|> liftM (\x -> (Scalar mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
        _       -> return $ (Scalar mytype idnt Nothing pos)
 
@@ -167,7 +175,7 @@ vdecl =
      mytype <- atype
      idnt  <- identifier
      case mytype of
-       (Int _) -> liftM3 (Array idnt) (many1 $ brackets $ optionMaybe expression) (return Nothing) (return pos)
+       (Int itype _) -> liftM3 (Array itype idnt) (many1 $ brackets $ optionMaybe expression) (return Nothing) (return pos)
               <|> return (Scalar mytype idnt Nothing pos)
        _       -> return $ Scalar mytype idnt Nothing pos
 
@@ -250,7 +258,7 @@ pushStmt =
     chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int p) f (Just expr) p) [stmtFun f] (LocalVar (Int p) f (Just (Number 0 p)) p) p
+         return $ Local (LocalVar (Int Unbound p) f (Just expr) p) [stmtFun f] (LocalVar (Int Unbound p) f (Just (Number 0 p)) p) p
 
 popStmt :: Parser Stmt
 popStmt =
@@ -263,7 +271,7 @@ popStmt =
     chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int p) f (Just $ (Number 0 p)) p) [stmtFun f] (LocalVar (Int p) f (Just expr) p) p
+         return $ Local (LocalVar (Int Unbound p) f (Just $ (Number 0 p)) p) [stmtFun f] (LocalVar (Int Unbound p) f (Just expr) p) p
 
 twoArgs :: Parser (Expr, Ident)
 twoArgs =
@@ -289,13 +297,21 @@ localStmt =
            typ  <- atype
            idnt <- identifier
            case typ of
-             (Int _) -> liftM2 (\x y -> (LocalArray idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
+             (Int itype _) -> liftM2 (\x y -> (LocalArray itype idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
                     <|> liftM  (\x -> (LocalVar typ idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
              _       -> liftM  (\x -> (LocalVar typ idnt (Just x) pos)) (reservedOp "=" >> expression)
 
 
 atype :: Parser Type
-atype =   (reserved "int"   >> liftM Int getPosition)
+atype =   (reserved "int"   >> liftM (Int Unbound) getPosition)
+      <|> (reserved "i8"    >> liftM (Int I8) getPosition)
+      <|> (reserved "i16"   >> liftM (Int I16) getPosition)
+      <|> (reserved "i32"   >> liftM (Int I32) getPosition)
+      <|> (reserved "i64"   >> liftM (Int I64) getPosition)
+      <|> (reserved "u8"    >> liftM (Int U8) getPosition)
+      <|> (reserved "u16"   >> liftM (Int U16) getPosition)
+      <|> (reserved "u32"   >> liftM (Int U32) getPosition)
+      <|> (reserved "u64"   >> liftM (Int U64) getPosition)
       <|> (reserved "stack" >> liftM Stack getPosition)
 
 callStmt :: Parser Stmt
@@ -338,7 +354,7 @@ formatArgumentList args_expr stmtFun =
       do f <- getFreshVar
          return (VarArg f, [Just (f,expr)])
     foldFun _  Nothing    stmt = stmt
-    foldFun p (Just(i,e)) stmt = Local (LocalVar (Int p) i (Just e) p) [stmt] (LocalVar (Int p) i (Just e) p) p
+    foldFun p (Just(i,e)) stmt = Local (LocalVar (Int Unbound p) i (Just e) p) [stmt] (LocalVar (Int Unbound p) i (Just e) p) p
     freshExpr expr =
       do f <- getFreshVar
          return f

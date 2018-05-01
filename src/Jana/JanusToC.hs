@@ -23,9 +23,19 @@ stmtWithBody :: Doc -> Doc -> Doc
 stmtWithBody lead doc = lead <+> text "{" $+$ (nest 4 doc) $+$ text "}"
 
 formatType :: Type -> Doc
-formatType (Int _)   = text "int"
+formatType (Int it _)   = formatIntType it
 formatType (Stack _) = error "Stack not supported in C Translation"
 formatType (BoolT _) = error "Stack not supported in C Translation"
+
+formatIntType Unbound = text "int"
+formatIntType I8      = text "signed char"
+formatIntType I16     = text "signed short"
+formatIntType I32     = text "signed int"
+formatIntType I64     = text "signed long"
+formatIntType U8      = text "unsigned char"
+formatIntType U16     = text "unsigned short"
+formatIntType U32     = text "unsigned int"
+formatIntType U64     = text "unsigned long"
 
 data IdentType = Forward | Reverse | Value | Pointer Int | Reference
 
@@ -108,12 +118,12 @@ formatExpr = f 0
 
 formatLocalDecl :: LocalDecl -> Doc
 formatLocalDecl (LocalVar typ idnt expr p)     = formatVdecl (Scalar typ idnt expr p)
-formatLocalDecl (LocalArray idnt iexprs expr p) = formatVdecl (Array idnt iexprs expr p)
+formatLocalDecl (LocalArray ityp idnt iexprs expr p) = formatVdecl (Array ityp idnt iexprs expr p)
 
 formatAssertLocalDecl :: LocalDecl -> Doc
 formatAssertLocalDecl (LocalVar tp idnt Nothing p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
 formatAssertLocalDecl (LocalVar _ idnt (Just expr) p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
-formatAssertLocalDecl (LocalArray _ _ _ _) = error "Not implemented"
+formatAssertLocalDecl (LocalArray _ _ _ _ _) = error "Not implemented"
 
 formatStmts :: [Stmt] -> Doc
 formatStmts = vcat . map formatStmt
@@ -171,7 +181,7 @@ formatStmt (Debug _ _) = error "Not supported in C++ traslation"
 -- Main procedure
 formatMain :: ProcMain -> Doc
 formatMain (ProcMain vdecls mainbody p) =
-  (formatType (Int p) <+> text "main()") `stmtWithBody`
+  (formatType (Int Unbound p) <+> text "main()") `stmtWithBody`
     (vcat (map formatVdecl vdecls) $+$
       text "" $+$
       formatStmts mainbody $+$
@@ -183,8 +193,8 @@ formatVdecl (Scalar typ idnt expr _) =
   where
     formatExp (Just e) = equals <+> formatExpr e
     formatExp Nothing  = equals <+> integer 0
-formatVdecl (Array idnt size a_exp p) =
-  formatType (Int p) <+> formatIdent Value idnt <> vcat (map formatSize size) <+> formatExp a_exp <> semi
+formatVdecl (Array itype idnt size a_exp p) =
+  formatType (Int itype p) <+> formatIdent Value idnt <> vcat (map formatSize size) <+> formatExp a_exp <> semi
   where formatSize (Just e) = brackets $ formatExpr e
         formatSize Nothing  = brackets empty
         formatExp (Just ex) = equals $+$ formatExpr ex
@@ -206,8 +216,8 @@ formatParam (Scalar typ idnt expr _) =
     where
       formatExp (Just e) = equals $+$ formatExpr e
       formatExp Nothing  = empty
-formatParam (Array idnt size a_exp p) =
-  formatType (Int p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
+formatParam (Array itype idnt size a_exp p) =
+  formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty

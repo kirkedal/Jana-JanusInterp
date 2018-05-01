@@ -4,18 +4,31 @@ import Text.Parsec.Pos
 
 -- Data types
 data Type
-    = Int SourcePos
+    = Int IntType SourcePos
     | Stack SourcePos
     | BoolT SourcePos
 
+data IntType
+    = Unbound
+    | I8
+    | I16
+    | I32
+    | I64
+    | U8
+    | U16
+    | U32
+    | U64
+    deriving (Eq)
+
+
 instance Eq Type where
-  (Int _)   == (Int _)   = True
-  (Stack _) == (Stack _) = True
-  (BoolT _) == (BoolT _) = True
-  _         == _         = False
+  (Int it1 _) == (Int it2 _) = it1 == it2
+  (Stack _)   == (Stack _)   = True
+  (BoolT _)   == (BoolT _)   = True
+  _           == _           = False
 
 baseVal :: Type -> Expr
-baseVal (Int sp)   = Number 0 sp
+baseVal (Int _ sp) = Number 0 sp
 baseVal (BoolT sp) = Boolean False sp
 baseVal (Stack sp) = Empty (Ident "" sp) sp
 
@@ -99,7 +112,7 @@ data Argument
 -- Local Declaration
 data LocalDecl
     = LocalVar Type Ident (Maybe Expr) SourcePos
-    | LocalArray Ident [Maybe Expr] (Maybe Expr) SourcePos
+    | LocalArray IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
     deriving (Eq)
 
 -- Expression
@@ -119,7 +132,7 @@ data Expr
 -- Declaration
 data Vdecl
     = Scalar Type Ident (Maybe Expr) SourcePos 
-    | Array  Ident [Maybe Expr] (Maybe Expr) SourcePos
+    | Array  IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
     deriving (Eq)
 
 data Prints
@@ -156,7 +169,7 @@ instance Identifiable Lval where
 
 instance Identifiable Vdecl where
   ident (Scalar _ id _ _) = ident id
-  ident (Array id _ _ _) = ident id
+  ident (Array  _ id _ _ _) = ident id
 
 instance Identifiable ProcMain where
   ident _ = "main"

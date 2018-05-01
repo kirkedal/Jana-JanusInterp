@@ -11,9 +11,20 @@ import Jana.Ast
 commasep = hsep . punctuate (char ',')
 
 
-formatType (Int _)   = text "int"
-formatType (Stack _) = text "stack"
-formatType (BoolT _) = text "bool"
+formatType (Int it _) = formatIntType it
+formatType (Stack _)  = text "stack"
+formatType (BoolT _)  = text "bool"
+
+formatIntType Unbound = text "int"
+formatIntType I8      = text "i8"
+formatIntType I16     = text "i16"
+formatIntType I32     = text "i32"
+formatIntType I64     = text "i64"
+formatIntType U8      = text "u8"
+formatIntType U16     = text "u16"
+formatIntType U32     = text "u32"
+formatIntType U64     = text "u84"
+
 
 formatIdent :: Ident -> Doc
 formatIdent id = text (ident id)
@@ -88,8 +99,8 @@ formatVdecl (Scalar typ id exp _) =
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
 
-formatVdecl (Array id size a_exp _) =
-  text "int" <+> formatIdent id <> vcat (map formatSize size) $+$ formatExp a_exp
+formatVdecl (Array itype id size a_exp _) =
+  formatIntType itype <+> formatIdent id <> vcat (map formatSize size) $+$ formatExp a_exp
   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatSize Nothing  = text "[]"
         formatExp (Just ex) = equals $+$ formatExpr ex
@@ -97,7 +108,7 @@ formatVdecl (Array id size a_exp _) =
 
 
 formatLocalDecl (LocalVar typ ident expr _)     = formatType typ <+> formatIdent ident <+> formatMaybeExpr expr
-formatLocalDecl (LocalArray ident iexprs expr p) = formatType (Int p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ formatMaybeExpr expr
+formatLocalDecl (LocalArray it ident iexprs expr p) = formatType (Int it p) <+> formatIdent ident <+> vcat (map formatIndex iexprs) $+$ formatMaybeExpr expr
   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatIndex Nothing  = text "[]"
 

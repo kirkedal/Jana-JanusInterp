@@ -2,7 +2,8 @@
 
 module Jana.Types (
     Array, Stack, Index, StoreEntry,
-    Value(..), nil, performOperation, performModOperation,
+    Value(..), IntValue(..), nil, performOperation, performModOperation,
+    unpackIntValue, intTypeToValueType, valueToValueType, typeToValueType,
     showValueType, typesMatch, truthy, findIndex,
     Store, printVdecl, showCurrentStore, showStore, emptyStore, storeFromList, putStore, getStore,
     getRefVal, getEntry, getVar, getRefValue, bindVar, unbindVar, setVar,
@@ -30,6 +31,8 @@ import Control.Monad.Except
 import Text.Printf (printf)
 import qualified Data.Map as Map
 import Math.NumberTheory.GCD (extendedGCD)
+import Data.Int
+import Data.Word
 
 import Text.Parsec.Pos
 
@@ -38,29 +41,97 @@ import Jana.Ast
 import Jana.Error
 import Jana.ErrorMessages
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
-type Array = [Integer]
-type Stack = [Integer]
+type Array = [IntValue]
+type Stack = [IntValue]
 type Index = [Integer]
 
 -- Types of values an expression can evaluate to.
 data Value
-  = JInt Integer
+  = JInt IntValue
   | JBool Bool
   | JArray Index Array
   | JStack Stack
   deriving (Eq)
 
+data IntValue
+  = JUnbound Integer
+  | JI8      Int8
+  | JI16     Int16
+  | JI32     Int32
+  | JI64     Int64
+  | JU8      Word8
+  | JU16     Word16
+  | JU32     Word32
+  | JU64     Word64
+  deriving (Eq)
+
 instance Show Value where
   show (JBool True)       = "true"
   show (JBool False)      = "false"
-  show (JInt x)           = show x
-  show (JArray [] _)      = ""
+  show (JInt x)         = show x
+  show (JArray [] _)    = ""
   show (JArray [_] xs)    = "{" ++ intercalate ", " (map show xs) ++ "}"
   show (JArray (i:is) xs) = "{" ++ intercalate ", " (map (\x -> show $ JArray is x) $ partitionInto i xs) ++ "}"
   show (JStack [])        = "nil"
   show (JStack xs)        = "<" ++ intercalate ", " (map show xs) ++ "]"
+
+instance Show IntValue where
+  show (JUnbound i) = show i
+  show (JI8      i) = show i
+  show (JI16     i) = show i
+  show (JI32     i) = show i
+  show (JI64     i) = show i
+  show (JU8      i) = show i
+  show (JU16     i) = show i
+  show (JU32     i) = show i
+  show (JU64     i) = show i
+
+unpackIntValue :: IntValue -> Integer
+unpackIntValue (JUnbound i) = i
+unpackIntValue (JI8      i) = toInteger i
+unpackIntValue (JI16     i) = toInteger i
+unpackIntValue (JI32     i) = toInteger i
+unpackIntValue (JI64     i) = toInteger i
+unpackIntValue (JU8      i) = toInteger i
+unpackIntValue (JU16     i) = toInteger i
+unpackIntValue (JU32     i) = toInteger i
+unpackIntValue (JU64     i) = toInteger i
+
+typeToValueType :: Integral a => Type -> a -> IntValue
+typeToValueType (Int itype _) = intTypeToValueType itype
+typeToValueType (Stack _)     = JUnbound . fromIntegral
+typeToValueType (BoolT _)     = JUnbound . fromIntegral
+
+intTypeToValueType :: Integral a => IntType -> a -> IntValue
+intTypeToValueType Unbound = JUnbound . fromIntegral
+intTypeToValueType I8      = JI8 . fromIntegral
+intTypeToValueType I16     = JI16 . fromIntegral
+intTypeToValueType I32     = JI32 . fromIntegral
+intTypeToValueType I64     = JI64 . fromIntegral
+intTypeToValueType U8      = JU8 . fromIntegral
+intTypeToValueType U16     = JU16 . fromIntegral
+intTypeToValueType U32     = JU32 . fromIntegral
+intTypeToValueType U64     = JU64 . fromIntegral
+
+valueToValueType :: Integral a => Value -> a -> IntValue
+valueToValueType (JInt ival)   = intTypeToValueType (intValueToIntType ival)
+valueToValueType (JBool _)     = JUnbound . fromIntegral
+valueToValueType (JArray _ a)  = intTypeToValueType (intValueToIntType $ head a)
+valueToValueType (JStack s)    = intTypeToValueType (intValueToIntType $ head s)
+
+intValueToIntType :: IntValue -> IntType
+intValueToIntType (JUnbound _) = Unbound
+intValueToIntType (JI8      _) = I8
+intValueToIntType (JI16     _) = I16
+intValueToIntType (JI32     _) = I32
+intValueToIntType (JI64     _) = I64
+intValueToIntType (JU8      _) = U8
+intValueToIntType (JU16     _) = U16
+intValueToIntType (JU32     _) = U32
+intValueToIntType (JU64     _) = U64
+
 
 partitionInto :: Integer -> [a] -> [[a]]
 partitionInto s n = go n
@@ -78,13 +149,24 @@ findIndex (iA:iAs) (iC:iCs)
 findIndex _        _        = Nothing
 
 showValueType :: Value -> String
-showValueType (JInt _)   = "int"
-showValueType (JStack _) = "stack"
+showValueType (JInt i) = showIntValue i
+showValueType (JStack _)   = "stack"
 showValueType (JArray i _) = "array" ++ "[" ++ intercalate ", " (map show i) ++ "]"
-showValueType (JBool _)  = "bool"
+showValueType (JBool _)    = "bool"
+
+showIntValue :: IntValue -> [Char]
+showIntValue (JUnbound _) = "int"
+showIntValue (JI8      _) = "i8"
+showIntValue (JI16     _) = "i16"
+showIntValue (JI32     _) = "i32"
+showIntValue (JI64     _) = "i64"
+showIntValue (JU8      _) = "u8"
+showIntValue (JU16     _) = "u16"
+showIntValue (JU32     _) = "u32"
+showIntValue (JU64     _) = "u64"
 
 typesMatch :: Value -> Value -> Bool
-typesMatch (JInt _)   (JInt _)   = True
+typesMatch (JInt i1) (JInt i2) = typesMatchInt i1 i2
 typesMatch (JArray i1 _) (JArray i2 _)
   | i1 == i2  = True
   | otherwise = False
@@ -92,52 +174,81 @@ typesMatch (JStack _) (JStack _) = True
 typesMatch (JBool _)  (JBool _)  = True
 typesMatch _          _          = False
 
+typesMatchInt :: IntValue -> IntValue -> Bool
+typesMatchInt (JUnbound _) (JUnbound _) = True
+typesMatchInt (JI8      _) (JI8      _) = True
+typesMatchInt (JI16     _) (JI16     _) = True
+typesMatchInt (JI32     _) (JI32     _) = True
+typesMatchInt (JI64     _) (JI64     _) = True
+typesMatchInt (JU8      _) (JU8      _) = True
+typesMatchInt (JU16     _) (JU16     _) = True
+typesMatchInt (JU32     _) (JU32     _) = True
+typesMatchInt (JU64     _) (JU64     _) = True
+typesMatchInt _            _            = False
+
 nil :: Value
 nil = JStack []
 
 truthy :: Value -> Bool
-truthy (JInt 0)    = False
+truthy (JInt i)    = truthyInt i
 truthy (JStack []) = False
 truthy _           = True
 
-wrap :: (a -> Value) -> (Integer -> Integer -> a) -> Integer -> Integer -> Value
+truthyInt :: IntValue -> Bool
+truthyInt (JUnbound 0) = True
+truthyInt (JI8      0) = True
+truthyInt (JI16     0) = True
+truthyInt (JI32     0) = True
+truthyInt (JI64     0) = True
+truthyInt (JU8      0) = True
+truthyInt (JU16     0) = True
+truthyInt (JU32     0) = True
+truthyInt (JU64     0) = True
+truthyInt _            = False
+
+wrap :: (a -> Value) -> (i -> i -> a) -> i -> i -> Value
 wrap m f x y = m $ f x y
 
-
-opFunc :: BinOp -> Integer -> Integer -> Value
-opFunc Add  = wrap JInt (+)
-opFunc Sub  = wrap JInt (-)
-opFunc Mul  = wrap JInt (*)
-opFunc Exp  = wrap JInt (^)
-opFunc Div  = wrap JInt div
-opFunc Mod  = wrap JInt mod
-opFunc And  = wrap JInt (.&.)
-opFunc Or   = wrap JInt (.|.)
-opFunc Xor  = wrap JInt xor
-opFunc SL   = wrap JInt (\x y -> shiftL x (fromEnum y))
-opFunc SR   = wrap JInt (\x y -> shiftR x (fromEnum y))
-opFunc LAnd = undefined -- handled by evalExpr
-opFunc LOr  = undefined -- handled by evalExpr
-opFunc GT   = wrap JBool (>)
-opFunc LT   = wrap JBool (<)
-opFunc EQ   = wrap JBool (==)
-opFunc NEQ  = wrap JBool (/=)
-opFunc GE   = wrap JBool (>=)
-opFunc LE   = wrap JBool (<=)
+opFunc :: (Bits b, Integral b) => BinOp -> (b -> IntValue) -> b -> b -> Value
+opFunc Add f = wrap (JInt . f) (+)
+opFunc Sub f = wrap (JInt . f) (-)
+opFunc Mul f = wrap (JInt . f) (*)
+opFunc Exp f = wrap (JInt . f) (^)
+opFunc Div f = wrap (JInt . f) div
+opFunc Mod f = wrap (JInt . f) mod
+opFunc And f = wrap (JInt . f) (.&.)
+opFunc Or  f = wrap (JInt . f) (.|.)
+opFunc Xor f = wrap (JInt . f) xor
+opFunc SL  f = wrap (JInt . f) (\x y -> shiftL x (fromEnum y))
+opFunc SR  f = wrap (JInt . f) (\x y -> shiftR x (fromEnum y))
+opFunc GT  _ = wrap JBool (>)
+opFunc LT  _ = wrap JBool (<)
+opFunc EQ  _ = wrap JBool (==)
+opFunc NEQ _ = wrap JBool (/=)
+opFunc GE  _ = wrap JBool (>=)
+opFunc LE  _ = wrap JBool (<=)
+opFunc _   _ = undefined -- handled by evalExpr
 
 performOperation :: BinOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
 --performOperation modOp v1 v2 _ _ | trace ("binOp " ++ show v1 ++ " " ++ show modOp ++ " " ++ show v2) False = undefined
-performOperation Div (JInt _) (JInt 0) _ pos =
+performOperation Div (JInt _) (JInt ival) _ pos | truthyInt ival =
   pos <!!> divisionByZero
-performOperation Div (JInt x) (JInt y) _ _ =
+performOperation Div (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ =
   do flag <- asks (modInt . evalOptions)
      case flag of
-       (ModPrime n) -> return $ opFunc Mul x (multInv y n)
-       _ -> return $ opFunc Div x y
+       (ModPrime n) -> return $ opFunc Mul (JUnbound) i1 (multInv i2 n)
+       _ -> return $ opFunc Div (JUnbound) i1 i2
   where
     multInv a p = (\(_,i,_) -> i) $ extendedGCD a (toInteger p)
-performOperation op (JInt x) (JInt y) _ _ =
-  return $ opFunc op x y
+performOperation op (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ = return $ opFunc op (JUnbound) i1 i2
+performOperation op (JInt (JI8 i1))      (JInt (JI8 i2))      _ _ = return $ opFunc op (JI8)      i1 i2
+performOperation op (JInt (JI16 i1))     (JInt (JI16 i2))     _ _ = return $ opFunc op (JI16)     i1 i2
+performOperation op (JInt (JI32 i1))     (JInt (JI32 i2))     _ _ = return $ opFunc op (JI32)     i1 i2
+performOperation op (JInt (JI64 i1))     (JInt (JI64 i2))     _ _ = return $ opFunc op (JI64)     i1 i2
+performOperation op (JInt (JU8 i1))      (JInt (JU8 i2))      _ _ = return $ opFunc op (JU8)      i1 i2
+performOperation op (JInt (JU16 i1))     (JInt (JU16 i2))     _ _ = return $ opFunc op (JU16)     i1 i2
+performOperation op (JInt (JU32 i1))     (JInt (JU32 i2))     _ _ = return $ opFunc op (JU32)     i1 i2
+performOperation op (JInt (JU64 i1))     (JInt (JU64 i2))     _ _ = return $ opFunc op (JU64)     i1 i2
 performOperation _ (JInt _) val _ pos =
   pos <!!> typeMismatch ["int"] (showValueType val)
 performOperation _ val _ pos _ =
@@ -405,8 +516,8 @@ procEnvFromList = foldM insertProc emptyProcEnv
 makeIdentList :: Proc -> [Ident]
 makeIdentList (Proc {params = p}) = map getVdeclIdent p
   where
-    getVdeclIdent (Scalar _ idnt _ _) = idnt
-    getVdeclIdent (Array idnt _ _ _)  = idnt
+    getVdeclIdent (Scalar _ idnt _ _)   = idnt
+    getVdeclIdent (Array  _ idnt _ _ _) = idnt
 
 checkDuplicateArgs :: [Ident] -> Bool
 checkDuplicateArgs []         = True
