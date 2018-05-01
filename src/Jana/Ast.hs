@@ -32,6 +32,11 @@ baseVal (Int _ sp) = Number 0 sp
 baseVal (BoolT sp) = Boolean False sp
 baseVal (Stack sp) = Empty (Ident "" sp) sp
 
+typeOfIntType :: Type -> IntType
+typeOfIntType (Int itype _) = itype
+typeOfIntType (Stack _)     = Unbound
+typeOfIntType (BoolT _)     = Unbound
+
 
 -- Identifier
 data Ident =
@@ -121,6 +126,7 @@ data Expr
     | Boolean  Bool SourcePos
     | LV       Lval SourcePos
     | UnaryOp  UnaryOp Expr
+    | TypeCast Type Expr
     | BinOp    BinOp Expr Expr
     | Empty    Ident SourcePos
     | Top      Ident SourcePos
@@ -131,7 +137,7 @@ data Expr
 
 -- Declaration
 data Vdecl
-    = Scalar Type Ident (Maybe Expr) SourcePos 
+    = Scalar Type Ident (Maybe Expr) SourcePos
     | Array  IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
     deriving (Eq)
 

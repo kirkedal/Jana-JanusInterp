@@ -98,24 +98,26 @@ formatBinOp = text . fst . (binOpMap Map.!)
 
 formatExpr :: Expr -> Doc
 formatExpr = f 0
-  where f _ (Number num _)    = integer num
-        f _ (Boolean True _)  = text "true"
-        f _ (Boolean False _) = text "false"
-        f _ (LV lval _)       = formatLval lval
-        f _ (Empty _ _)      = error "Not supported in C++ traslation"
-        f _ (Top _ _)        = error "Not supported in C++ traslation"
-        f _ (Size _ _)       = error "Not supported in C++ traslation"
-        f _ (ArrayE _ _)     = error "Not supported in C++ traslation"
-        f _ (Nil _)           = error "Not supported in C++ traslation"
-        f d (UnaryOp op e)    =
-          let opd = unaryOpPrec op in
-            parens' (d > opd) (formatUnaryOp op <> f opd e)
-        f d (BinOp op e1 e2)  =
-          let opd = binOpPrec op in
-            parens' (d > opd) (f opd e1 <+> formatBinOp op <+> f opd e2)
-        unaryOpPrec  = snd . (unaryOpMap Map.!)
-        binOpPrec    = snd . (binOpMap Map.!)
-        parens' bool = if bool then parens else id
+  where
+    f _ (Number num _)      = integer num
+    f _ (Boolean True _)    = text "true"
+    f _ (Boolean False _)   = text "false"
+    f _ (LV lval _)         = formatLval lval
+    f _ (Empty _ _)         = error "Not supported in C++ traslation"
+    f _ (Top _ _)           = error "Not supported in C++ traslation"
+    f _ (Size _ _)          = error "Not supported in C++ traslation"
+    f _ (ArrayE _ _)        = error "Not supported in C++ traslation"
+    f _ (Nil _)             = error "Not supported in C++ traslation"
+    f d (TypeCast typ expr) = parens' (d > 6) (formatType typ <+> f 6 expr)
+    f d (UnaryOp op e)      =
+      let opd = unaryOpPrec op in
+        parens' (d > opd) (formatUnaryOp op <> f opd e)
+    f d (BinOp op e1 e2)  =
+      let opd = binOpPrec op in
+        parens' (d > opd) (f opd e1 <+> formatBinOp op <+> f opd e2)
+    unaryOpPrec  = snd . (unaryOpMap Map.!)
+    binOpPrec    = snd . (binOpMap Map.!)
+    parens' bool = if bool then parens else id
 
 formatLocalDecl :: LocalDecl -> Doc
 formatLocalDecl (LocalVar typ idnt expr p)     = formatVdecl (Scalar typ idnt expr p)

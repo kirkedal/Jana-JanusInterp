@@ -3,7 +3,7 @@
 module Jana.Types (
     Array, Stack, Index, StoreEntry,
     Value(..), IntValue(..), nil, performOperation, performModOperation,
-    unpackIntValue, intTypeToValueType, valueToValueType, typeToValueType,
+    unpackIntValue, intTypeToValueType, valueToValueType, typeToValueType, valueToIntType, zeroValue,
     showValueType, typesMatch, truthy, findIndex,
     Store, printVdecl, showCurrentStore, showStore, emptyStore, storeFromList, putStore, getStore,
     getRefVal, getEntry, getVar, getRefValue, bindVar, unbindVar, setVar,
@@ -88,6 +88,12 @@ instance Show IntValue where
   show (JU32     i) = show i
   show (JU64     i) = show i
 
+zeroValue :: IntType -> IntValue
+zeroValue t = f t 0
+  where
+    f :: IntType -> Integer -> IntValue
+    f = intTypeToValueType
+
 unpackIntValue :: IntValue -> Integer
 unpackIntValue (JUnbound i) = i
 unpackIntValue (JI8      i) = toInteger i
@@ -120,6 +126,12 @@ valueToValueType (JInt ival)   = intTypeToValueType (intValueToIntType ival)
 valueToValueType (JBool _)     = JUnbound . fromIntegral
 valueToValueType (JArray _ a)  = intTypeToValueType (intValueToIntType $ head a)
 valueToValueType (JStack s)    = intTypeToValueType (intValueToIntType $ head s)
+
+valueToIntType :: Value -> IntType
+valueToIntType (JInt ival)   = intValueToIntType ival
+valueToIntType (JBool _)     = Unbound
+valueToIntType (JArray _ a)  = intValueToIntType $ head a
+valueToIntType (JStack s)    = intValueToIntType $ head s
 
 intValueToIntType :: IntValue -> IntType
 intValueToIntType (JUnbound _) = Unbound
@@ -249,10 +261,8 @@ performOperation op (JInt (JU8 i1))      (JInt (JU8 i2))      _ _ = return $ opF
 performOperation op (JInt (JU16 i1))     (JInt (JU16 i2))     _ _ = return $ opFunc op (JU16)     i1 i2
 performOperation op (JInt (JU32 i1))     (JInt (JU32 i2))     _ _ = return $ opFunc op (JU32)     i1 i2
 performOperation op (JInt (JU64 i1))     (JInt (JU64 i2))     _ _ = return $ opFunc op (JU64)     i1 i2
-performOperation _ (JInt _) val _ pos =
-  pos <!!> typeMismatch ["int"] (showValueType val)
-performOperation _ val _ pos _ =
-  pos <!!> typeMismatch ["int"] (showValueType val)
+performOperation _ val1 val2 _ pos =
+  pos <!!> typeMismatch [showValueType val1] (showValueType val2)
 
 performModOperation :: ModOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
 -- performModOperation modOp v1 v2 _ _ | trace ("modOp " ++ show v1 ++ " " ++ show modOp ++ " " ++ show v2) False = undefined

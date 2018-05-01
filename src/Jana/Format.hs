@@ -86,16 +86,17 @@ formatExpr :: Expr -> Doc
 formatExpr = f 0
   where
     f :: Integer -> Expr -> Doc
-    f _ (Number num _)    = integer num
-    f _ (Boolean True _)  = text "true"
-    f _ (Boolean False _) = text "false"
-    f _ (LV lval _)       = formatLval lval
-    f _ (Empty fid _)      = text "empty" <> parens (formatIdent fid)
-    f _ (Top fid _)        = text "top" <> parens (formatIdent fid)
-    f _ (Size fid _)       = text "size" <> parens (formatIdent fid)
-    f _ (ArrayE es _)     = text "{" <+> vcat (intersperse (text ",") (map formatExpr es)) $+$ text "}"
-    f _ (Nil _)           = text "nil"
-    f d (UnaryOp op e)    =
+    f _ (Number num _)      = integer num
+    f _ (Boolean True _)    = text "true"
+    f _ (Boolean False _)   = text "false"
+    f _ (LV lval _)         = formatLval lval
+    f _ (Empty fid _)       = text "empty" <> parens (formatIdent fid)
+    f _ (Top fid _)         = text "top" <> parens (formatIdent fid)
+    f _ (Size fid _)        = text "size" <> parens (formatIdent fid)
+    f _ (ArrayE es _)       = text "{" <+> vcat (intersperse (text ",") (map formatExpr es)) $+$ text "}"
+    f _ (Nil _)             = text "nil"
+    f d (TypeCast typ expr) = parens' (d > 6) (formatType typ <+> f 6 expr)
+    f d (UnaryOp op e)      =
       let opd = unaryOpPrec op in
         parens' (d > opd) (formatUnaryOp op <> f opd e)
     f d (BinOp op e1 e2)  =
@@ -254,6 +255,9 @@ formatProgram (Program main procs) =
 -- Show instance for AST
 instance Show Type where
   show = render . formatType
+
+instance Show IntType where
+  show = render . formatIntType
 
 instance Show Ident where
   show = render . formatIdent

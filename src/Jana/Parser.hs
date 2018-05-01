@@ -469,6 +469,7 @@ sizeExpr = reserved "size" >> liftM Size (parens identifier)
 
 binOperators :: [[Operator String Int Identity Expr]]
 binOperators = [ [ notChain
+                 , cast
                  ]
                , [ binop  "**"  Exp
                  ]
@@ -504,6 +505,8 @@ binOperators = [ [ notChain
         unOp          = notOp <|> negOp
         notOp         = symbol "!" >> return (UnaryOp Not)
         negOp         = symbol "~" >> return (UnaryOp BwNeg)
+        cast          = Prefix $ chainl1 casting $ return (.)
+        casting       = parens atype >>= (\x -> return $ TypeCast x)
 
 parseString :: Parser a -> String -> a
 parseString parser str =
