@@ -49,46 +49,22 @@ janaDef = Token.LanguageDef {
               , Token.reservedOpNames  = []
               , Token.reservedNames    = [ "procedure"
                                          , "int"
-                                         , "i8"
-                                         , "i16"
-                                         , "i32"
-                                         , "i64"
-                                         , "u8"
-                                         , "u16"
-                                         , "u32"
-                                         , "u64"
-                                         , "stack"
-                                         , "bool"
-                                         , "t rue"
-                                         , "false"
-                                         , "if"
-                                         , "then"
-                                         , "else"
-                                         , "fi"
-                                         , "from"
-                                         , "do"
-                                         , "loop"
-                                         , "until"
-                                         , "push"
-                                         , "pop"
-                                         , "local"
-                                         , "delocal"
-                                         , "call"
-                                         , "uncall"
+                                         , "i8", "i16", "i32", "i64"
+                                         , "u8", "u16", "u32", "u64"
+                                         , "bool",  "true", "false"
+                                         , "if",    "then", "else", "fi"
+                                         , "from",  "do",   "loop", "until"
+                                         , "push",  "pop"
+                                         , "local", "delocal"
+                                         , "call", "uncall"
                                          , "external"
                                          , "error"
                                          , "skip"
-                                         , "empty"
-                                         , "top"
-                                         , "size"
-                                         , "show"
-                                         , "print"
-                                         , "printf"
+                                         , "stack", "empty", "top", "size"
+                                         , "show", "print", "printf"
                                          , "nil"
                                          , "assert"
-                                         , "iterate"
-                                         , "by"
-                                         , "to"
+                                         , "iterate", "by", "to"
                                          ]
               , Token.caseSensitive    = True
   }
@@ -159,7 +135,9 @@ mainvdecl =
      mytype <- atype
      idnt  <- identifier
      case mytype of
-       (Int itype _) -> liftM2 (\x y -> (Array itype idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
+       (Int itype _) -> liftM2 (\x y -> (Array itype idnt x y pos))
+                                        (many1 $ brackets $ optionMaybe expression)
+                                        (optionMaybe $ reservedOp "=" >> array)
               <|> liftM (\x -> (Scalar mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
        _       -> return $ (Scalar mytype idnt Nothing pos)
 
@@ -297,7 +275,9 @@ localStmt =
            typ  <- atype
            idnt <- identifier
            case typ of
-             (Int itype _) -> liftM2 (\x y -> (LocalArray itype idnt x y pos)) (many1 $ brackets $ optionMaybe expression) (optionMaybe $ reservedOp "=" >> array)
+             (Int itype _) -> liftM2 (\x y -> (LocalArray itype idnt x y pos))
+                                     (many1 $ brackets $ optionMaybe expression)
+                                     (optionMaybe $ reservedOp "=" >> array)
                     <|> liftM  (\x -> (LocalVar typ idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
              _       -> liftM  (\x -> (LocalVar typ idnt (Just x) pos)) (reservedOp "=" >> expression)
 
@@ -505,8 +485,7 @@ binOperators = [ [ notChain
         unOp          = notOp <|> negOp
         notOp         = symbol "!" >> return (UnaryOp Not)
         negOp         = symbol "~" >> return (UnaryOp BwNeg)
-        cast          = Prefix $ chainl1 casting $ return (.)
-        casting       = parens atype >>= (\x -> return $ TypeCast x)
+        cast          = Prefix $ try (parens atype >>= (\x -> return $ TypeCast x))
 
 parseString :: Parser a -> String -> a
 parseString parser str =
