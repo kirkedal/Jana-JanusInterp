@@ -144,6 +144,8 @@ intValueToIntType (JU16     _) = U16
 intValueToIntType (JU32     _) = U32
 intValueToIntType (JU64     _) = U64
 
+intValueToValueType :: Integral a => IntValue -> a -> IntValue
+intValueToValueType v = intTypeToValueType $ intValueToIntType v
 
 partitionInto :: Integer -> [a] -> [[a]]
 partitionInto s n = go n
@@ -252,6 +254,10 @@ performOperation Div (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ =
        _ -> return $ opFunc Div (JUnbound) i1 i2
   where
     multInv a p = (\(_,i,_) -> i) $ extendedGCD a (toInteger p)
+performOperation SL (JInt ival)          (JInt shiftval)      _ _ =
+  return $ opFunc SL (intValueToValueType ival) (unpackIntValue ival) (unpackIntValue shiftval)
+performOperation SR (JInt ival)          (JInt shiftval)      _ _ =
+  return $ opFunc SR (intValueToValueType ival) (unpackIntValue ival) (unpackIntValue shiftval)
 performOperation op (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ = return $ opFunc op (JUnbound) i1 i2
 performOperation op (JInt (JI8 i1))      (JInt (JI8 i2))      _ _ = return $ opFunc op (JI8)      i1 i2
 performOperation op (JInt (JI16 i1))     (JInt (JI16 i2))     _ _ = return $ opFunc op (JI16)     i1 i2
