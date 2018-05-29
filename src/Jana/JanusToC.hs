@@ -28,15 +28,16 @@ formatType (Stack _) = error "Stack not supported in C Translation"
 formatType (BoolT _) = error "Stack not supported in C Translation"
 
 formatIntType :: IntType -> Doc
-formatIntType Unbound = text "int"
-formatIntType I8      = text "signed char"
-formatIntType I16     = text "signed short"
-formatIntType I32     = text "signed int"
-formatIntType I64     = text "signed long"
-formatIntType U8      = text "unsigned char"
-formatIntType U16     = text "unsigned short"
-formatIntType U32     = text "unsigned int"
-formatIntType U64     = text "unsigned long"
+formatIntType FreshVar = text "int"   -- HACK
+formatIntType Unbound  = text "int"
+formatIntType I8       = text "signed char"
+formatIntType I16      = text "signed short"
+formatIntType I32      = text "signed int"
+formatIntType I64      = text "signed long"
+formatIntType U8       = text "unsigned char"
+formatIntType U16      = text "unsigned short"
+formatIntType U32      = text "unsigned int"
+formatIntType U64      = text "unsigned long"
 
 data IdentType = Forward | Reverse | Value | Pointer Int | Reference
 
@@ -51,9 +52,9 @@ formatLval :: Lval -> Doc
 formatLval (Var idnt) = formatIdent Value idnt
 formatLval (Lookup idnt expr) = formatIdent Value idnt <> cat (map (\e -> brackets $ formatExpr e) expr)
 
-formatArgument :: Argument -> Doc
-formatArgument (VarArg i) = formatIdent Value i
-formatArgument (ArrayArg a i) = formatIdent Value a <> (brackets $ commasep (map (formatIdent Value) i))
+-- formatArgument :: Argument -> Doc
+-- formatArgument (VarArg i) = formatIdent Value i
+-- formatArgument (ArrayArg a i) = formatIdent Value a <> (brackets $ commasep (map (formatIdent Value) i))
 
 
 formatModOp :: ModOp -> Doc
@@ -159,13 +160,13 @@ formatStmt (Local decl1 s decl2 _) =
   formatStmts s $+$
   formatAssertLocalDecl decl2
 formatStmt (Call idnt args _) =
-  formatIdent Forward idnt <> parens (commasep $ map formatArgument args) <> semi
+  formatIdent Forward idnt <> parens (commasep $ map formatExpr args) <> semi
 formatStmt (Uncall idnt args _) =
-  formatIdent Reverse idnt <> parens (commasep $ map formatArgument args) <> semi
+  formatIdent Reverse idnt <> parens (commasep $ map formatExpr args) <> semi
 formatStmt (ExtCall idnt args _) =
-  formatIdent Forward idnt <> parens (commasep $ map formatArgument args) <> semi
+  formatIdent Forward idnt <> parens (commasep $ map formatExpr args) <> semi
 formatStmt (ExtUncall idnt args _) =
-  formatIdent Reverse idnt <> parens (commasep $ map formatArgument args) <> semi
+  formatIdent Reverse idnt <> parens (commasep $ map formatExpr args) <> semi
 formatStmt (Swap id1 id2 p) =
   formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
 formatStmt (UserError msg _) =

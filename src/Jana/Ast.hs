@@ -9,7 +9,8 @@ data Type
     | BoolT SourcePos
 
 data IntType
-    = Unbound
+    = FreshVar
+    | Unbound
     | I8
     | I16
     | I32
@@ -95,10 +96,10 @@ data Stmt
     | Push      Ident Ident SourcePos
     | Pop       Ident Ident SourcePos
     | Local     LocalDecl [Stmt] LocalDecl SourcePos
-    | Call      Ident [Argument] SourcePos
-    | Uncall    Ident [Argument] SourcePos
-    | ExtCall   Ident [Argument] SourcePos
-    | ExtUncall Ident [Argument] SourcePos
+    | Call      Ident [Expr] SourcePos
+    | Uncall    Ident [Expr] SourcePos
+    | ExtCall   Ident [Expr] SourcePos
+    | ExtUncall Ident [Expr] SourcePos
     | UserError String SourcePos
     | Swap      Lval Lval SourcePos
     | Prints    Prints SourcePos

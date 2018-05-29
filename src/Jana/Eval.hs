@@ -188,11 +188,9 @@ sizeEstimate _            = []
 flattenArray :: SourcePos -> Index -> Expr -> Eval [Expr]
 flattenArray _ [] (ArrayE _ pos) = pos <!!> arraySize
 flattenArray _ [] e              = return [e]
-flattenArray _ (s:sIdx) (ArrayE a pos)
-  | s >= size =
-      do es <- liftM concat $ mapM (flattenArray pos sIdx) a
-         return $ genericTake (product (s:sIdx)) $ es ++ (repeat $ Number 0 pos)
-  | otherwise                    = pos <!!> arraySize
+flattenArray _ (s:sIdx) (ArrayE a pos) | s >= size =
+  do es <- liftM concat $ mapM (flattenArray pos sIdx) a
+     return $ genericTake (product (s:sIdx)) $ es ++ (repeat $ Number 0 pos)
   where size = toInteger (length a)
 flattenArray pos _ _             = pos <!!> arraySize
 
@@ -490,38 +488,10 @@ evalStmt (Pop idnt1 idnt2 pos) =
          []     -> pos <!!> emptyStack
 evalStmt (Local assign1 stmts assign2 _) =
   do checkIdentAndType assign1 assign2
-     createBinding assign1
+     createLocalBinding assign1
      evalStmts stmts
-     whenForwardExecutionElse (assertBinding assign2) (assertBinding assign1)
+     whenForwardExecutionElse (assertLocalBinding assign2) (assertLocalBinding assign1)
   where
-    createBinding (LocalVar typ@(Int itype _) idnt expr _) =
-      do val <- evalModularExpr itype (fromMaybeExpr typ expr)
-         checkType typ val
-         bindVar idnt val
-    createBinding (LocalArray itype idnt size expr pos) =
-      do sizeInt <- evalSize pos size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
-         exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
-         vals  <- mapM (evalModularExpr itype) exprs
-         valsI <- mapM (checkTypeInt pos) vals
-         bindVar idnt $ JArray sizeInt valsI
-    createBinding _ = undefined "No created bindings on stacks and arrays"
-    assertBinding (LocalVar typ@(Int itype _) idnt expr pos) =
-      do val <- evalModularAliasExpr itype (Just $ Var idnt) (fromMaybeExpr typ expr)
-         val' <- getVar idnt
-         unless (val == val') $
-           pos <!!> wrongDelocalValue idnt (show val) (show val')
-         unbindVar idnt
-    assertBinding (LocalArray itype idnt size expr pos) =
-      do sizeInt <- evalAliasSize pos (Just (Var idnt)) size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
-         exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
-         vals  <- mapM (evalModularAliasExpr itype (Just $ Var idnt)) exprs
-         valsI <- mapM (checkTypeInt pos) vals
-         let valsC = JArray sizeInt valsI
-         vals' <- getVar idnt
-         unless (valsC == vals') $
-           pos <!!> wrongDelocalValue idnt (show valsC) (show vals')
-         unbindVar idnt
-    assertBinding _ = undefined "No asserted bindings on stacks and arrays"
     checkIdentAndType (LocalVar typ1 id1 _ _) (LocalVar typ2 id2 _ pos) =
       do unless (id1 == id2) $
            pos <!!> delocalNameMismatch id1 id2
@@ -534,17 +504,13 @@ evalStmt (Local assign1 stmts assign2 _) =
            pos <!!> delocalTypeMismatch id1 "Array" (show typ)
     checkIdentAndType (LocalVar typ _ _ _) (LocalArray _ id1 _ _ pos) =
            pos <!!> delocalTypeMismatch id1 "Array" (show typ)
-    fromMaybeExpr typ Nothing   = baseVal typ
-    fromMaybeExpr _ (Just expr) = expr
-    fromMaybeArrayExpr pos Nothing = ArrayE [] pos
-    fromMaybeArrayExpr _ (Just expr) = expr
 
-evalStmt (Call funId args _) =
+evalStmt (Call funId expArgs _) =
   do proc <- getProc funId
-     evalProc proc args
-evalStmt (Uncall funId args _) =
+     setupProcCall proc expArgs
+evalStmt (Uncall funId expArgs _) =
   do proc <- getProc funId
-     evalProc (invertProc proc) args
+     setupProcCall (invertProc proc) expArgs
 evalStmt (ExtCall _ _ pos) =
   pos <!!> noExternalCalls
 evalStmt (ExtUncall _ _ pos) =
@@ -585,6 +551,76 @@ evalStmt (Prints (Show vars) _) =
         showVar var = liftM (printVdecl (ident var)) (getVar var)
 evalStmt (Skip _) = return ()
 evalStmt (Assert e _) = assertTrue e
+
+createLocalBinding :: LocalDecl -> Eval ()
+createLocalBinding (LocalVar typ@(Int itype _) idnt expr _) =
+  do val <- evalModularExpr itype (fromMaybeExpr typ expr)
+     checkType typ val
+     bindVar idnt val
+createLocalBinding (LocalArray itype idnt size expr pos) =
+  do sizeInt <- evalSize pos size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
+     exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
+     vals  <- mapM (evalModularExpr itype) exprs
+     valsI <- mapM (checkTypeInt pos) vals
+     bindVar idnt $ JArray sizeInt valsI
+createLocalBinding _ = undefined "No created bindings on stacks and arrays"
+
+assertLocalBinding :: LocalDecl -> Eval ()
+assertLocalBinding (LocalVar typ@(Int itype _) idnt expr pos) =
+  do val <- evalModularAliasExpr itype (Just $ Var idnt) (fromMaybeExpr typ expr)
+     val' <- getVar idnt
+     unless (val == val') $
+       pos <!!> wrongDelocalValue idnt (show val) (show val')
+     unbindVar idnt
+assertLocalBinding (LocalArray itype idnt size expr pos) =
+  do sizeInt <- evalAliasSize pos (Just (Var idnt)) size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
+     exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
+     vals  <- mapM (evalModularAliasExpr itype (Just $ Var idnt)) exprs
+     valsI <- mapM (checkTypeInt pos) vals
+     let valsC = JArray sizeInt valsI
+     vals' <- getVar idnt
+     unless (valsC == vals') $
+       pos <!!> wrongDelocalValue idnt (show valsC) (show vals')
+     unbindVar idnt
+assertLocalBinding _ = undefined "No asserted bindings on stacks and arrays"
+
+fromMaybeExpr :: Type -> Maybe Expr -> Expr
+fromMaybeExpr typ Nothing   = baseVal typ
+fromMaybeExpr _ (Just expr) = expr
+fromMaybeArrayExpr :: SourcePos -> Maybe Expr -> Expr
+fromMaybeArrayExpr pos Nothing = ArrayE [] pos
+fromMaybeArrayExpr _ (Just expr) = expr
+
+
+setupProcCall :: Proc -> [Expr] -> Eval ()
+setupProcCall procedure args_expr =
+  do args_map <- mapM chkExpression $ zip args_expr (params procedure)
+     let (args, list) = unzip args_map
+         locals = map makelocal $ concat list
+     mapM_ createLocalBinding locals
+     evalProc procedure args
+     mapM_ assertLocalBinding locals
+  where
+    chkExpression :: (Expr, Vdecl) -> Eval (Argument, [(Ident, IntType, Expr)])
+    chkExpression ((LV (Var i) _), (Scalar t _ _ _)) =
+      do v <- getVar i
+         checkType t v
+         return (VarArg i, [])
+    chkExpression (LV (Lookup i exprs) pos, _) =
+      do fs <- mapM (freshExpr pos) exprs
+         let r = zip3 fs (repeat Unbound) exprs
+         return (ArrayArg i fs, r)
+    chkExpression (expr, (Scalar (Int t _) _ _ pos)) =
+      do f <- getFreshVar pos
+         return (VarArg f, [(f, t, expr)])
+    chkExpression _ = undefined "Wrong function call"
+
+    makelocal :: (Ident, IntType, Expr) -> LocalDecl
+    makelocal (idnt@(Ident _ pos), it, expr) = LocalVar (Int it pos) idnt (Just expr) pos
+    freshExpr pos _ =
+      do f <- getFreshVar pos
+         return f
+
 
 evalLval :: Maybe Lval -> Lval -> Eval Value
 -- evalLval lval lval2 | trace ("evalLval " ++ show lval2 ++ " (" ++ show lval ++ ")") False = undefined

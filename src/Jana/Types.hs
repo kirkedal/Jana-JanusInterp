@@ -16,7 +16,8 @@ module Jana.Types (
     whenDebuggingElse, doWhenDebugging, whenFirstBreak, whenFullDebugging, isErrorDebugging,
     executeForward, executeBackward, flipExecution, whenForwardExecution, whenBackwardExecution,
     isForwardExecution, whenForwardExecutionElse, isUserForwardExecution, doWhenForwardExecution,
-    stepForward, stepBackward
+    stepForward, stepBackward,
+    getFreshVar
     ) where
 
 import Control.Applicative
@@ -111,15 +112,16 @@ typeToValueType (Stack _)     = JUnbound . fromIntegral
 typeToValueType (BoolT _)     = JUnbound . fromIntegral
 
 intTypeToValueType :: Integral a => IntType -> a -> IntValue
-intTypeToValueType Unbound = JUnbound . fromIntegral
-intTypeToValueType I8      = JI8 . fromIntegral
-intTypeToValueType I16     = JI16 . fromIntegral
-intTypeToValueType I32     = JI32 . fromIntegral
-intTypeToValueType I64     = JI64 . fromIntegral
-intTypeToValueType U8      = JU8 . fromIntegral
-intTypeToValueType U16     = JU16 . fromIntegral
-intTypeToValueType U32     = JU32 . fromIntegral
-intTypeToValueType U64     = JU64 . fromIntegral
+intTypeToValueType FreshVar = error "Fresh variables must be inferred before this."
+intTypeToValueType Unbound  = JUnbound . fromIntegral
+intTypeToValueType I8       = JI8 . fromIntegral
+intTypeToValueType I16      = JI16 . fromIntegral
+intTypeToValueType I32      = JI32 . fromIntegral
+intTypeToValueType I64      = JI64 . fromIntegral
+intTypeToValueType U8       = JU8 . fromIntegral
+intTypeToValueType U16      = JU16 . fromIntegral
+intTypeToValueType U32      = JU32 . fromIntegral
+intTypeToValueType U64      = JU64 . fromIntegral
 
 valueToValueType :: Integral a => Value -> a -> IntValue
 valueToValueType (JInt ival)   = intTypeToValueType (intValueToIntType ival)
@@ -286,6 +288,7 @@ data EvalState = ES { breakPoints :: BreakPoints
                     , userForwardExecution :: Bool
                     , firstDBbeginning :: Bool
                     , stepDebugging :: Bool
+                    , freshVarIdx :: Int
                     , store :: Store}
 
 emptyStore :: EvalState
@@ -294,7 +297,15 @@ emptyStore = ES { breakPoints = Set.empty,
                   forwardExecution = True,
                   firstDBbeginning = True,
                   stepDebugging = False,
+                  freshVarIdx = 0,
                   store = Map.empty}
+
+getFreshVar :: SourcePos -> Eval Ident
+getFreshVar p =
+  do env <- get
+     let i = freshVarIdx env
+     modify $ \x -> x {freshVarIdx = i + 1}
+     return $ Ident ("_eval_tmp_" ++ show i) p
 
 --------------------------------------------------------------
 -- Debugger commands

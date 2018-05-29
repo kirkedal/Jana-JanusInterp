@@ -236,7 +236,7 @@ pushStmt =
     chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int Unbound p) f (Just expr) p) [stmtFun f] (LocalVar (Int Unbound p) f (Just (Number 0 p)) p) p
+         return $ Local (LocalVar (Int FreshVar p) f (Just expr) p) [stmtFun f] (LocalVar (Int FreshVar p) f (Just (Number 0 p)) p) p
 
 popStmt :: Parser Stmt
 popStmt =
@@ -249,7 +249,7 @@ popStmt =
     chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int Unbound p) f (Just $ (Number 0 p)) p) [stmtFun f] (LocalVar (Int Unbound p) f (Just expr) p) p
+         return $ Local (LocalVar (Int FreshVar p) f (Just $ (Number 0 p)) p) [stmtFun f] (LocalVar (Int FreshVar p) f (Just expr) p) p
 
 twoArgs :: Parser (Expr, Ident)
 twoArgs =
@@ -301,10 +301,13 @@ callStmt =
      e <- optionMaybe $ reserved "external"
      pname <- identifier
      args_exp <- parens $ sepBy expression comma
-     formatArgumentList args_exp (callType e pname pos)
+     -- formatArgumentList args_exp (callType e pname pos)
+     return $ callType e pname args_exp pos
   where
-    callType Nothing  pname pos = (\a -> Call pname a pos)
-    callType (Just _) pname pos = (\a -> ExtCall pname a pos)
+    callType Nothing  pname exprs pos = Call pname exprs pos
+    callType (Just _) pname exprs pos = ExtCall pname exprs pos
+    -- callType Nothing  pname pos = (\a -> Uncall pname a pos)
+    -- callType (Just _) pname pos = (\a -> ExtUncall pname a pos)
 
 uncallStmt :: Parser Stmt
 uncallStmt =
@@ -313,31 +316,34 @@ uncallStmt =
      e <- optionMaybe $ reserved "external"
      pname <- identifier
      args_exp <- parens $ sepBy expression comma
-     formatArgumentList args_exp (callType e pname pos)
+     -- formatArgumentList args_exp (callType e pname pos)
+     return $ callType e pname args_exp pos
   where
-    callType Nothing  pname pos = (\a -> Uncall pname a pos)
-    callType (Just _) pname pos = (\a -> ExtUncall pname a pos)
+    callType Nothing  pname exprs pos = Call pname exprs pos
+    callType (Just _) pname exprs pos = ExtCall pname exprs pos
+    -- callType Nothing  pname pos = (\a -> Uncall pname a pos)
+    -- callType (Just _) pname pos = (\a -> ExtUncall pname a pos)
 
-formatArgumentList :: [Expr] -> ([Argument] -> Stmt) -> Parser Stmt
-formatArgumentList args_expr stmtFun =
-  do pos   <- getPosition
-     args_map <- mapM chkExpression args_expr
-     let (args,exprs) = unzip args_map
-     return $ foldr (foldFun pos) (stmtFun args) $ concat exprs
-  where
-    chkExpression (LV (Var i) _) = return (VarArg i, [Nothing])
-    chkExpression (LV (Lookup i exprs) _) =
-      do fs <- mapM freshExpr exprs
-         let r = map (\(x,y) -> Just (x, y)) $ zip fs exprs
-         return (ArrayArg i fs, r)
-    chkExpression expr =
-      do f <- getFreshVar
-         return (VarArg f, [Just (f,expr)])
-    foldFun _  Nothing    stmt = stmt
-    foldFun p (Just(i,e)) stmt = Local (LocalVar (Int Unbound p) i (Just e) p) [stmt] (LocalVar (Int Unbound p) i (Just e) p) p
-    freshExpr _ =
-      do f <- getFreshVar
-         return f
+-- formatArgumentList :: [Expr] -> ([Argument] -> Stmt) -> Parser Stmt
+-- formatArgumentList args_expr stmtFun =
+--   do pos   <- getPosition
+--      args_map <- mapM chkExpression args_expr
+--      let (args,exprs) = unzip args_map
+--      return $ foldr (foldFun pos) (stmtFun args) $ concat exprs
+--   where
+--     chkExpression (LV (Var i) _) = return (VarArg i, [Nothing])
+--     chkExpression (LV (Lookup i exprs) _) =
+--       do fs <- mapM freshExpr exprs
+--          let r = map (\(x,y) -> Just (x, y)) $ zip fs exprs
+--          return (ArrayArg i fs, r)
+--     chkExpression expr =
+--       do f <- getFreshVar
+--          return (VarArg f, [Just (f,expr)])
+--     foldFun _  Nothing    stmt = stmt
+--     foldFun p (Just(i,e)) stmt = Local (LocalVar (Int FreshVar p) i (Just e) p) [stmt] (LocalVar (Int FreshVar p) i (Just e) p) p
+--     freshExpr _ =
+--       do f <- getFreshVar
+--          return f
 
 swapStmt :: Parser Stmt
 swapStmt =

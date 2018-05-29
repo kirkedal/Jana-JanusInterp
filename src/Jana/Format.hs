@@ -18,15 +18,16 @@ formatType (Stack _)  = text "stack"
 formatType (BoolT _)  = text "bool"
 
 formatIntType :: IntType -> Doc
-formatIntType Unbound = text "int"
-formatIntType I8      = text "i8"
-formatIntType I16     = text "i16"
-formatIntType I32     = text "i32"
-formatIntType I64     = text "i64"
-formatIntType U8      = text "u8"
-formatIntType U16     = text "u16"
-formatIntType U32     = text "u32"
-formatIntType U64     = text "u84"
+formatIntType FreshVar = error "Fresh variable must be inferred."  -- HACK
+formatIntType Unbound  = text "int"
+formatIntType I8       = text "i8"
+formatIntType I16      = text "i16"
+formatIntType I32      = text "i32"
+formatIntType I64      = text "i64"
+formatIntType U8       = text "u8"
+formatIntType U16      = text "u16"
+formatIntType U32      = text "u32"
+formatIntType U64      = text "u84"
 
 
 formatIdent :: Ident -> Doc
@@ -167,13 +168,13 @@ formatStmt (Local decl1 s decl2 _) =
   formatStmts s $+$
   text "delocal" <+> formatLocalDecl decl2
 formatStmt (Call fid args _) =
-  text "call" <+> formatIdent fid <> parens (commasep $ map formatArgument args)
+  text "call" <+> formatIdent fid <> parens (commasep $ map formatExpr args)
 formatStmt (Uncall fid args _) =
-  text "uncall" <+> formatIdent fid <> parens (commasep $ map formatArgument args)
+  text "uncall" <+> formatIdent fid <> parens (commasep $ map formatExpr args)
 formatStmt (ExtCall fid args _) =
-  text "call external" <+> formatIdent fid <> parens (commasep $ map formatArgument args)
+  text "call external" <+> formatIdent fid <> parens (commasep $ map formatExpr args)
 formatStmt (ExtUncall fid args _) =
-  text "uncall external" <+> formatIdent fid <> parens (commasep $ map formatArgument args)
+  text "uncall external" <+> formatIdent fid <> parens (commasep $ map formatExpr args)
 formatStmt (Swap id1 id2 _) =
   formatLval id1 <+> text "<=>" <+> formatLval id2
 formatStmt (UserError msg _) =
@@ -193,9 +194,9 @@ formatStmt (Assert e _) =
 formatStmt (Debug _ _) =
   text ""
 
-formatArgument :: Argument -> Doc
-formatArgument (VarArg i) = formatIdent i
-formatArgument (ArrayArg a i) = formatIdent a <> (brackets $ commasep (map formatIdent i))
+-- formatArgument :: Argument -> Doc
+-- formatArgument (VarArg i) = formatIdent i
+-- formatArgument (ArrayArg a i) = formatIdent a <> (brackets $ commasep (map formatIdent i))
 
 
 formatStmtsAbbrv :: [Stmt] -> Doc
@@ -277,8 +278,8 @@ instance Show Vdecl where
 instance Show Proc where
   show = render . formatProc
 
-instance Show Argument where
-  show = render . formatArgument
+-- instance Show Argument where
+--   show = render . formatArgument
 
 instance Show ProcMain where
   show = render . formatMain
