@@ -606,6 +606,10 @@ setupProcCall procedure args_expr =
       do v <- getVar i
          checkType t v
          return (VarArg i, [])
+    chkExpression ((LV (Var i) _), (Array it _ s _ pos)) =
+      do v <- getVar i
+         checkType (Int it pos) v
+         return (VarArg i, [])
     chkExpression (LV (Lookup i exprs) pos, _) =
       do fs <- mapM (freshExpr pos) exprs
          let r = zip3 fs (repeat Unbound) exprs
