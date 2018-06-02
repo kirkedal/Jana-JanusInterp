@@ -69,12 +69,15 @@ unaryOpMap = Map.fromList [
   ]
 binOpMap :: Map.Map BinOp ([Char], Integer)
 binOpMap = Map.fromList [
-    (Mul , ("*",  4))
-  , (Div , ("/",  4))
-  , (Mod , ("%",  4))
+    (Mul , ("*",  5))
+  , (Div , ("/",  5))
+  , (Mod , ("%",  5))
 
-  , (Add , ("+",  3))
-  , (Sub , ("-",  3))
+  , (Add , ("+",  4))
+  , (Sub , ("-",  4))
+
+  , (SL , ("<<",  3))
+  , (SR , (">>",  3))
 
   , (GE  , (">=", 2))
   , (GT  , (">",  2))
