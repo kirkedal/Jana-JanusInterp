@@ -319,8 +319,8 @@ uncallStmt =
      -- formatArgumentList args_exp (callType e pname pos)
      return $ callType e pname args_exp pos
   where
-    callType Nothing  pname exprs pos = Call pname exprs pos
-    callType (Just _) pname exprs pos = ExtCall pname exprs pos
+    callType Nothing  pname exprs pos = Uncall pname exprs pos
+    callType (Just _) pname exprs pos = ExtUncall pname exprs pos
     -- callType Nothing  pname pos = (\a -> Uncall pname a pos)
     -- callType (Just _) pname pos = (\a -> ExtUncall pname a pos)
 
