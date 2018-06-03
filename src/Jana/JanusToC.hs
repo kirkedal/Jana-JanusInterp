@@ -110,7 +110,7 @@ formatExpr = f 0
     f _ (Empty _ _)         = error "Not supported in C++ traslation"
     f _ (Top _ _)           = error "Not supported in C++ traslation"
     f _ (Size _ _)          = error "Not supported in C++ traslation"
-    f _ (ArrayE _ _)        = error "Not supported in C++ traslation"
+    f _ (ArrayE es _)       = text "{" <+> vcat (intersperse (text ",") (map formatExpr es)) $+$ text "}"
     f _ (Nil _)             = error "Not supported in C++ traslation"
     f d (TypeCast typ expr) = parens' (d > 6) (formatType typ <+> f 6 expr)
     f d (UnaryOp op e)      =
@@ -130,7 +130,15 @@ formatLocalDecl (LocalArray ityp idnt iexprs expr p) = formatVdecl (Array ityp i
 formatAssertLocalDecl :: LocalDecl -> Doc
 formatAssertLocalDecl (LocalVar tp idnt Nothing p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
 formatAssertLocalDecl (LocalVar _ idnt (Just expr) p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
-formatAssertLocalDecl (LocalArray _ _ _ _ _) = error "Not implemented"
+formatAssertLocalDecl (LocalArray intTp idnt sizes expr p) = empty -- not implemented
+-- formatAssertLocalDecl (LocalArray intTp idnt sizes expr p) = formatType (Int it p) <+> formatIdent arrId <+> vcat (map formatIndex iexprs)
+-- $+$ formatMaybeExpr expr
+--   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
+--         formatIndex Nothing  = text "[]"
+
+formatMaybeExpr :: Maybe Expr -> Doc
+formatMaybeExpr Nothing  = empty
+formatMaybeExpr (Just e) = equals <+> formatExpr e
 
 formatStmts :: [Stmt] -> Doc
 formatStmts = vcat . map formatStmt
