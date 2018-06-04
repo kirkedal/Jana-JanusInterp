@@ -72,7 +72,8 @@ binOpMap = Map.fromList [
     (Mul , ("*",  5))
   , (Div , ("/",  5))
   , (Mod , ("%",  5))
-
+  , (Exp , ("**", 5))
+  
   , (Add , ("+",  4))
   , (Sub , ("-",  4))
 
@@ -110,7 +111,7 @@ formatExpr = f 0
     f _ (Empty _ _)         = error "Not supported in C++ traslation"
     f _ (Top _ _)           = error "Not supported in C++ traslation"
     f _ (Size _ _)          = error "Not supported in C++ traslation"
-    f _ (ArrayE es _)       = text "{" <+> vcat (intersperse (text ",") (map formatExpr es)) $+$ text "}"
+    f _ (ArrayE es _)       = braces $ cat (intersperse (text ", ") (map formatExpr es))
     f _ (Nil _)             = error "Not supported in C++ traslation"
     f d (TypeCast typ expr) = parens' (d > 6) (formatType typ <+> f 6 expr)
     f d (UnaryOp op e)      =
@@ -212,7 +213,7 @@ formatVdecl (Array itype idnt size a_exp p) =
   formatType (Int itype p) <+> formatIdent Value idnt <> vcat (map formatSize size) <+> formatExp a_exp <> semi
   where formatSize (Just e) = brackets $ formatExpr e
         formatSize Nothing  = brackets empty
-        formatExp (Just ex) = equals $+$ formatExpr ex
+        formatExp (Just ex) = equals <+> formatExpr ex
         formatExp Nothing   = equals <+> braces (integer 0)
 
 -- Local procedures
