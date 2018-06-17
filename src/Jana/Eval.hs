@@ -522,11 +522,17 @@ evalStmt (Swap id1 id2 pos) =
        then setLval id2 val1 >> setLval id1 val2
        else pos <!!> swapTypeError (showValueType val1) (showValueType val2)
   where
-    setLval (Var idnt) val = setVar idnt val
+    setLval (Var idnt) val =
+      do indx <- getEntryIndex idnt
+         case indx of
+           [] -> setVar idnt val
+           _  -> setLval (Lookup idnt []) val
     setLval (Lookup idnt idxExpr) (JInt val) =
-      do let ps = map getExprPos idxExpr
-         idx <- mapM (\(e, p) -> (unpackInt p Unbound =<< evalModularExpr Unbound e)) $ zip idxExpr ps
-         (sIdx,arr) <- unpackArray pos =<< getVar idnt
+      do indx <- getEntryIndex idnt
+         let es_ext = (map (\x -> Number x pos) indx) ++ idxExpr
+         let ps = map getExprPos es_ext
+         idx <- mapM (\(e, p) -> (unpackInt p Unbound =<< evalModularExpr Unbound e)) $ zip es_ext ps
+         (sIdx,arr) <- unpackArray pos =<< getRefVal idnt
          arrUpd <- arrayModify (head ps) sIdx arr (map unpackIntValue idx) val
          setVar idnt $ JArray sIdx arrUpd
     setLval _ val =
