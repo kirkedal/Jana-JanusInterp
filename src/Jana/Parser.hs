@@ -90,7 +90,16 @@ brackets   = Token.brackets   lexer -- parses brackets
 braces :: Parser a -> Parser a
 braces     = Token.braces     lexer -- parses brackets
 integer :: Parser Integer
-integer    = Token.integer    lexer -- parses an integer
+integer    = try binary <|> (Token.integer lexer)
+  where
+    binary =
+      do symbol "0b"
+         bin <- many1 (symbol "0" <|> symbol "1")
+         return $ convert $ reverse bin
+    convert [] = 0
+    convert ("0" : xs) = 2 * convert xs
+    convert ("1" : xs) = 1 + 2 * convert xs
+
 comma :: Parser String
 comma      = Token.comma      lexer -- parses a comma
 symbol :: String -> Parser String
