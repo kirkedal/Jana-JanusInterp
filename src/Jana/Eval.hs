@@ -493,17 +493,17 @@ evalStmt (Local assign1 stmts assign2 _) =
      whenForwardExecutionElse (assertLocalBinding assign2) (assertLocalBinding assign1)
   where
     checkIdentAndType (LocalVar typ1 id1 _ _) (LocalVar typ2 id2 _ pos) =
-      do unless (id1 == id2) $
-           pos <!!> delocalNameMismatch id1 id2
-         unless (typ1 == typ2) $
-           pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
+      do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
+         unless (typ1 == typ2) $ pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
     checkIdentAndType (LocalArray typ1 id1 _ _ pos) (LocalArray typ2 id2 _ _ _) =
-      do unless (id1 == id2) $ pos <!!> delocalNameMismatch id1 id2
+      do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
          unless (typ1 == typ2) $ pos <!!> delocalNameMismatch id1 id2
-    checkIdentAndType (LocalArray _ id1 _ _ pos) (LocalVar typ _ _ _) =
-           pos <!!> delocalTypeMismatch id1 "Array" (show typ)
-    checkIdentAndType (LocalVar typ _ _ _) (LocalArray _ id1 _ _ pos) =
-           pos <!!> delocalTypeMismatch id1 "Array" (show typ)
+    checkIdentAndType (LocalArray _ id1 _ _ pos) (LocalVar typ id2 _ _) =
+      do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
+         pos <!!> delocalTypeMismatch id1 "Array" (show typ)
+    checkIdentAndType (LocalVar typ id2 _ _) (LocalArray _ id1 _ _ pos) =
+      do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
+         pos <!!> delocalTypeMismatch id1 "Array" (show typ)
 
 evalStmt (Call funId expArgs _) =
   do proc <- getProc funId
