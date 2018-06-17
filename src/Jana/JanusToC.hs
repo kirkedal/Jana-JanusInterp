@@ -117,6 +117,7 @@ formatExpr = f 0
     f d (UnaryOp op e)      =
       let opd = unaryOpPrec op in
         parens' (d > opd) (formatUnaryOp op <> f opd e)
+    f d (BinOp Exp e1 e2)  = text "pow" <> parens (formatExpr e1 <> comma <+> formatExpr e2)
     f d (BinOp op e1 e2)  =
       let opd = binOpPrec op in
         parens' (d > opd) (f opd e1 <+> formatBinOp op <+> f opd e2)
@@ -125,8 +126,8 @@ formatExpr = f 0
     parens' bool = if bool then parens else id
 
 formatLocalDecl :: LocalDecl -> Doc
-formatLocalDecl (LocalVar typ idnt expr p)     = formatVdecl (Scalar typ idnt expr p)
-formatLocalDecl (LocalArray ityp idnt iexprs expr p) = formatVdecl (Array ityp idnt iexprs expr p)
+formatLocalDecl (LocalVar typ idnt expr p)     = formatVdecl (Scalar Variable typ idnt expr p)
+formatLocalDecl (LocalArray ityp idnt iexprs expr p) = formatVdecl (Array Variable ityp idnt iexprs expr p)
 
 formatAssertLocalDecl :: LocalDecl -> Doc
 formatAssertLocalDecl (LocalVar tp idnt Nothing p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
@@ -204,13 +205,13 @@ formatMain (ProcMain vdecls mainbody p) =
       text "return 1;")
 
 formatVdecl :: Vdecl -> Doc
-formatVdecl (Scalar typ idnt expr _) =
-  formatType typ <+> formatIdent Value idnt <+> formatExp expr <> semi
+formatVdecl (Scalar vdtyp typ idnt expr _) =
+  formatVdeclType vdtyp <+> formatType typ <+> formatIdent Value idnt <+> formatExp expr <> semi
   where
     formatExp (Just e) = equals <+> formatExpr e
     formatExp Nothing  = equals <+> integer 0
-formatVdecl (Array itype idnt size a_exp p) =
-  formatType (Int itype p) <+> formatIdent Value idnt <> vcat (map formatSize size) <+> formatExp a_exp <> semi
+formatVdecl (Array vdtyp itype idnt size a_exp p) =
+  formatVdeclType vdtyp <+> formatType (Int itype p) <+> formatIdent Value idnt <> vcat (map formatSize size) <+> formatExp a_exp <> semi
   where formatSize (Just e) = brackets $ formatExpr e
         formatSize Nothing  = brackets empty
         formatExp (Just ex) = equals <+> formatExpr ex
@@ -227,16 +228,21 @@ formatProc proc =
       (formatStmts $ invertStmts Locally $ body proc)
 
 formatParam :: Vdecl -> Doc
-formatParam (Scalar typ idnt expr _) =
-  formatType typ <+> formatIdent Reference idnt <> formatExp expr
+formatParam (Scalar vdtyp typ idnt expr _) =
+  formatVdeclType vdtyp <+> formatType typ <+> formatIdent Reference idnt <> formatExp expr
     where
       formatExp (Just e) = equals $+$ formatExpr e
       formatExp Nothing  = empty
-formatParam (Array itype idnt size a_exp p) =
-  formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
+formatParam (Array vdtyp itype idnt size a_exp p) =
+  formatVdeclType vdtyp <+> formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
+
+formatVdeclType :: VdeclType -> Doc
+formatVdeclType Variable = empty
+formatVdeclType Ancilla = text "ancilla"
+formatVdeclType Constant = text "constant"
 
 formatParams :: [Vdecl] -> Doc
 formatParams = commasep . map formatParam
@@ -256,6 +262,7 @@ formatProgram headerfile (Program mains procs) =
   text "/* Translated from Janus program */" $+$
   text "#include <stdio.h>      /* printf */" $+$
   text "#include <assert.h>" $+$
+  text "#include <math.h>" $+$
   text include_header $+$
   text "" $+$
   vcat (intersperse (text "") $ map defineProc procs) $+$

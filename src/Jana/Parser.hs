@@ -51,6 +51,7 @@ janaDef = Token.LanguageDef {
                                          , "int"
                                          , "i8", "i16", "i32", "i64"
                                          , "u8", "u16", "u32", "u64"
+                                         , "ancilla", "constant"
                                          , "bool",  "true", "false"
                                          , "if",    "then", "else", "fi"
                                          , "from",  "do",   "loop", "until"
@@ -141,14 +142,15 @@ mainProcedure pos =
 mainvdecl :: Parser Vdecl
 mainvdecl =
   do pos    <- getPosition
+     vdtype <- vdeclType
      mytype <- atype
      idnt  <- identifier
      case mytype of
-       (Int itype _) -> liftM2 (\x y -> (Array itype idnt x y pos))
+       (Int itype _) -> liftM2 (\x y -> (Array vdtype itype idnt x y pos))
                                         (many1 $ brackets $ optionMaybe expression)
                                         (optionMaybe $ reservedOp "=" >> array)
-              <|> liftM (\x -> (Scalar mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
-       _       -> return $ (Scalar mytype idnt Nothing pos)
+              <|> liftM (\x -> (Scalar vdtype mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
+       _       -> return $ (Scalar vdtype mytype idnt Nothing pos)
 
 procedure :: Ident -> Parser Proc
 procedure name =
@@ -159,12 +161,19 @@ procedure name =
 vdecl :: Parser Vdecl
 vdecl =
   do pos    <- getPosition
+     vdtype <- vdeclType
      mytype <- atype
-     idnt  <- identifier
+     idnt   <- identifier
      case mytype of
-       (Int itype _) -> liftM3 (Array itype idnt) (many1 $ brackets $ optionMaybe expression) (return Nothing) (return pos)
-              <|> return (Scalar mytype idnt Nothing pos)
-       _       -> return $ Scalar mytype idnt Nothing pos
+       (Int itype _) -> liftM3 (Array vdtype itype idnt) (many1 $ brackets $ optionMaybe expression) (return Nothing) (return pos)
+              <|> return (Scalar vdtype mytype idnt Nothing pos)
+       _       -> return $ Scalar vdtype mytype idnt Nothing pos
+
+vdeclType :: Parser VdeclType
+vdeclType = option Variable (ancilla <|> constant)
+  where
+    ancilla  = (reserved "ancilla") >> return Ancilla
+    constant = (reserved "constant") >> return Constant
 
 statement :: Parser Stmt
 statement =   assignStmt

@@ -115,18 +115,22 @@ formatMaybeExpr (Just e) = equals <+> formatExpr e
 
 
 formatVdecl :: Vdecl -> Doc
-formatVdecl (Scalar typ fid expr _) =
-  formatType typ <+> formatIdent fid $+$ formatExp expr
+formatVdecl (Scalar vdtyp typ fid expr _) =
+  formatVdeclType vdtyp <+> formatType typ <+> formatIdent fid $+$ formatExp expr
     where
       formatExp (Just e) = equals $+$ formatExpr e
       formatExp Nothing     = empty
-formatVdecl (Array itype fid size a_exp _) =
-  formatIntType itype <+> formatIdent fid <> vcat (map formatSize size) $+$ formatExp a_exp
+formatVdecl (Array vdtyp itype fid size a_exp _) =
+  formatVdeclType vdtyp <+> formatIntType itype <+> formatIdent fid <> vcat (map formatSize size) $+$ formatExp a_exp
   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatSize Nothing  = text "[]"
         formatExp (Just ex) = equals $+$ formatExpr ex
         formatExp Nothing   = empty
 
+formatVdeclType :: VdeclType -> Doc
+formatVdeclType Variable = empty
+formatVdeclType Ancilla = text "ancilla"
+formatVdeclType Constant = text "constant"
 
 formatLocalDecl :: LocalDecl -> Doc
 formatLocalDecl (LocalVar typ varId expr _)     = formatType typ <+> formatIdent varId <+> formatMaybeExpr expr
@@ -270,6 +274,9 @@ instance Show Lval where
 
 instance Show Expr where
   show = render . formatExpr
+
+instance Show LocalDecl where
+  show = render . formatLocalDecl
 
 instance Show Stmt where
   show = render . formatStmt

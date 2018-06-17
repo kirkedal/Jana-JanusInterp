@@ -6,7 +6,7 @@ module Jana.Types (
     unpackIntValue, intTypeToValueType, valueToValueType, typeToValueType, valueToIntType, zeroValue,
     showValueType, typesMatch, truthy, findIndex,
     Store, printVdecl, showCurrentStore, showStore, emptyStore, storeFromList, putStore, getStore,
-    getRefVal, getEntry, getVar, getRefValue, bindVar, unbindVar, setVar,
+    getRefVal, getEntry, getEntryIndex, getVar, getRefValue, bindVar, unbindVar, setVar,
     EvalEnv(..),
     EvalOptions(..), defaultOptions, DebugMode(..),
     ProcEnv, emptyProcEnv, procEnvFromList, getProc,
@@ -405,7 +405,10 @@ whenBackwardExecution f =
 -- Store
 --------------------------------------------------------------
 
-type StoreEntry = (IORef Value, Index)
+data EntryType = Static | Dynamic
+  deriving (Eq)
+
+type StoreEntry = (IORef Value, Index, EntryType)
 type Store = Map.Map String StoreEntry
 
 getStore :: Eval Store
@@ -425,7 +428,7 @@ printVdecl name val = printf "%s = %s" name (show val)
 showStore :: EvalState -> IO String
 showStore s =
   liftM (intercalate "\n")
-        (mapM (\(name, (ref,_)) -> liftM (printVdecl name) (readIORef ref))
+        (mapM (\(name, (ref,_,_)) -> liftM (printVdecl name) (readIORef ref))
               (Map.toList (store s)))
 
 showCurrentStore :: Eval String
@@ -436,11 +439,11 @@ showCurrentStore =
      ents <- mapM mapFun sList
      return $ intercalate "\n" ents
   where
-    mapFun (s,(r,_)) =
+    mapFun (s,(r,_,_)) =
       do v <- getRefValue r
          return $ printVdecl s v
 
-storeFromList :: [(String, (IORef Value, Index))] -> Store
+storeFromList :: [(String, (IORef Value, Index, EntryType))] -> Store
 storeFromList = Map.fromList
 
 getEntry :: Ident -> Eval StoreEntry
@@ -451,17 +454,22 @@ getEntry (Ident name pos) =
        Just ref -> return ref
        Nothing  -> pos <!!> unboundVar name
 
+getEntryIndex :: Ident -> Eval Index
+getEntryIndex idnt =
+  do (_,i,_) <- getEntry idnt
+     return i
+
 -- getRef :: Ident -> Eval (IORef Value)
 -- getRef idnt = getRef idnt >>= liftIO . readIORef
 
 getRefVal :: Ident -> Eval Value
 getRefVal idnt =
-  do (r,_) <- getEntry idnt
+  do (r,_,_) <- getEntry idnt
      getRefValue r
 
 getVar :: Ident -> Eval Value
 getVar idnt =
-  do (r,i) <- getEntry idnt
+  do (r,i,_) <- getEntry idnt
      v <- getRefValue r
      return $ indexValue i v
 
@@ -478,14 +486,17 @@ indexValue (i:is) (JArray (idx:idxs) array) | i < idx =
 indexValue _ _ = undefined "Indexing non-array value"
 
 -- Bind a variable name to a new reference
-bindVar :: Ident -> Value -> Eval ()
-bindVar (Ident name pos) val =
+bindVar :: VdeclType -> Ident -> Value -> Eval ()
+bindVar vdType (Ident name pos) val =
   do evalS <- get
      let storeEnv = store evalS
      ref <- liftIO $ newIORef val
      case Map.lookup name storeEnv of
-       Nothing  -> put $ evalS {store = Map.insert name (ref, []) storeEnv}
+       Nothing  -> put $ evalS {store = Map.insert name (ref, [], entType vdType) storeEnv}
        Just _   -> pos <!!> alreadyBound name
+  where 
+    entType Constant = Static
+    entType _        = Dynamic
 
 unbindVar :: Ident -> Eval ()
 unbindVar i =
@@ -496,7 +507,8 @@ unbindVar i =
 -- Set the value of a variable (modifying the reference)
 setVar :: Ident -> Value -> Eval ()
 setVar idnt val =
-  do (ref, i) <- getEntry idnt
+  do (ref, i, etype) <- getEntry idnt
+     when (etype == Static) $ error "Updating constant"
      curV <- getRefValue ref
      liftIO $ writeIORef ref $ updValue i curV val
 
@@ -543,8 +555,8 @@ procEnvFromList = foldM insertProc emptyProcEnv
 makeIdentList :: Proc -> [Ident]
 makeIdentList (Proc {params = p}) = map getVdeclIdent p
   where
-    getVdeclIdent (Scalar _ idnt _ _)   = idnt
-    getVdeclIdent (Array  _ idnt _ _ _) = idnt
+    getVdeclIdent (Scalar _ _ idnt _ _)   = idnt
+    getVdeclIdent (Array  _ _ idnt _ _ _) = idnt
 
 checkDuplicateArgs :: [Ident] -> Bool
 checkDuplicateArgs []         = True

@@ -138,8 +138,14 @@ data Expr
 
 -- Declaration
 data Vdecl
-    = Scalar Type Ident (Maybe Expr) SourcePos
-    | Array  IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
+    = Scalar VdeclType Type Ident (Maybe Expr) SourcePos
+    | Array  VdeclType IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
+    deriving (Eq)
+
+data VdeclType
+    = Variable
+    | Ancilla
+    | Constant
     deriving (Eq)
 
 data Prints
@@ -175,8 +181,8 @@ instance Identifiable Lval where
   ident (Lookup idnt _) = ident idnt
 
 instance Identifiable Vdecl where
-  ident (Scalar _ idnt _ _) = ident idnt
-  ident (Array  _ idnt _ _ _) = ident idnt
+  ident (Scalar _ _ idnt _ _) = ident idnt
+  ident (Array  _ _ idnt _ _ _) = ident idnt
 
 instance Identifiable ProcMain where
   ident _ = "main"
