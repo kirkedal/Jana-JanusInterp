@@ -29,7 +29,7 @@ import Jana.ErrorMessages
 import Jana.Printf
 import Jana.Debug
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 inArgument :: String -> String -> Eval a -> Eval a
 inArgument funid argid monad = catchError monad $
@@ -54,7 +54,7 @@ unpackInt _ _ (JInt x) = return x
 unpackInt pos itype val = pos <!!> typeMismatch [show itype] (showValueType val)
 
 unpackArray :: SourcePos -> Value -> Eval (Index, Array)
-unpackArray _ v | trace ("unpackArray " ++ show v) False = undefined
+-- unpackArray _ v | trace ("unpackArray " ++ show v) False = undefined
 unpackArray _ (JArray i x) = return (i,x)
 unpackArray pos val = pos <!!> typeMismatch ["array"] (showValueType val)
 
@@ -425,7 +425,7 @@ dbUsage = "Usage of the jana debugger\n\
 
 
 evalStmt :: Stmt -> Eval ()
-evalStmt stmt | trace ("EvalStmt at line" ++ (show $ sourceLine $ stmtPos stmt) ++ " doing " ++ (show stmt)) False = undefined
+-- evalStmt stmt | trace ("EvalStmt at line" ++ (show $ sourceLine $ stmtPos stmt) ++ " doing " ++ (show stmt)) False = undefined
 evalStmt (Debug Beginning pos) =
   do whenFullDebugging $
        whenFirstBreak
@@ -559,7 +559,7 @@ evalStmt (Skip _) = return ()
 evalStmt (Assert e _) = assertTrue e
 
 createLocalBinding :: LocalDecl -> Eval ()
-createLocalBinding decl | trace ("createLocalBinding " ++ show decl) False = undefined
+-- createLocalBinding decl | trace ("createLocalBinding " ++ show decl) False = undefined
 createLocalBinding (LocalVar typ@(Int itype _) idnt expr _) =
   do val <- evalModularExpr itype (fromMaybeExpr typ expr)
      checkType typ val
@@ -573,7 +573,7 @@ createLocalBinding (LocalArray itype idnt size expr pos) =
 createLocalBinding _ = undefined "No created bindings on stacks and arrays"
 
 assertLocalBinding :: LocalDecl -> Eval ()
-assertLocalBinding decl | trace ("assertLocalBinding " ++ show decl) False = undefined
+-- assertLocalBinding decl | trace ("assertLocalBinding " ++ show decl) False = undefined
 assertLocalBinding (LocalVar typ@(Int itype _) idnt expr pos) =
   do val <- evalModularAliasExpr itype (Just $ Var idnt) (fromMaybeExpr typ expr)
      val' <- getVar idnt
@@ -635,7 +635,7 @@ setupProcCall procedure args_expr =
 
 
 evalLval :: Maybe Lval -> Lval -> Eval Value
-evalLval lval lval2 | trace ("evalLval " ++ show lval2 ++ " (" ++ show lval ++ ")") False = undefined
+-- evalLval lval lval2 | trace ("evalLval " ++ show lval2 ++ " (" ++ show lval ++ ")") False = undefined
 evalLval lv (Var idnt@(Ident _ _)) =
   do indx <- getEntryIndex idnt
      case indx of
@@ -683,7 +683,7 @@ checkAlias (Just (Var idnt)) idnt2 = findAlias idnt idnt2
 checkAlias (Just (Lookup idnt _)) idnt2 = findAlias idnt idnt2
 
 checkLvalAlias :: Maybe Lval -> Lval -> Eval ()
-checkLvalAlias mlval lval | trace ("checkLvalAlias (" ++ show mlval ++ ") " ++ show lval) False = undefined
+-- checkLvalAlias mlval lval | trace ("checkLvalAlias (" ++ show mlval ++ ") " ++ show lval) False = undefined
 checkLvalAlias Nothing _ = return ()
 checkLvalAlias (Just (Var idnt)) (Var idnt2) = findAlias idnt idnt2
 checkLvalAlias (Just (Var idnt)) (Lookup idnt2 _) = findAlias idnt idnt2
@@ -696,7 +696,7 @@ checkLvalAlias (Just (Lookup idnt exprn)) (Lookup idnt2 exprm) =
        else return ()
 
 evalExpr :: IntType -> Maybe Lval -> Expr -> Eval Value
-evalExpr itype lval expr | trace ("exalExpr (" ++ show itype ++ ", " ++ show lval ++ ") " ++ show expr) False = undefined
+-- evalExpr itype lval expr | trace ("exalExpr (" ++ show itype ++ ", " ++ show lval ++ ") " ++ show expr) False = undefined
 evalExpr itype _ (Number x _)  = return $ JInt $ intTypeToValueType itype x
 evalExpr _ _ (Boolean b _)     = return $ JBool b
 evalExpr _ _ (Nil _)           = return nil
