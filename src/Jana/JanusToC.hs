@@ -108,11 +108,11 @@ formatExpr = f 0
     f _ (Boolean True _)    = text "true"
     f _ (Boolean False _)   = text "false"
     f _ (LV lval _)         = formatLval lval
-    f _ (Empty _ _)         = error "Not supported in C++ traslation"
-    f _ (Top _ _)           = error "Not supported in C++ traslation"
-    f _ (Size _ _)          = error "Not supported in C++ traslation"
+    f _ (Empty _ _)         = error "empty: Not supported in C++ translation"
+    f _ (Top _ _)           = error "top: Not supported in C++ translation"
+    f _ (Size _ _)          = error "size: Not supported in C++ translation"
     f _ (ArrayE es _)       = braces $ cat (intersperse (text ", ") (map formatExpr es))
-    f _ (Nil _)             = error "Not supported in C++ traslation"
+    f _ (Nil _)             = error "nil: Not supported in C++ translation"
     f d (TypeCast typ expr) = parens' (d > 6) (formatType typ <+> f 6 expr)
     f d (UnaryOp op e)      =
       let opd = unaryOpPrec op in
@@ -183,16 +183,18 @@ formatStmt (Swap id1 id2 p) =
   formatStmts [Assign XorEq id1 (LV id2 p) p, Assign XorEq id2 (LV id1 p) p, Assign XorEq id1 (LV id2 p) p]
 formatStmt (UserError msg _) =
   text "printf" <> parens (text (show msg)) <> semi $+$ text "exit()" <> semi
-formatStmt (Prints (Print _) _) = error "Not supported in C++ traslation"
+formatStmt (Prints (Print str) _) =
+  text "printf" <> parens (text (show str)) <> semi
 formatStmt (Prints (Printf str []) _) =
   text "printf" <> parens (text (show str)) <> semi
 formatStmt (Prints (Printf str idents) _) =
   text "printf" <> parens (text (show str) <> comma <+> commasep (map (formatIdent Value) idents)) <> semi
-formatStmt (Prints (Show _) _) = error "Not supported in C++ traslation"
+formatStmt (Prints (Show idents) _) =
+  text "printf" <> parens (text "\"%d\\n\"," <> (formatIdent Value (head idents))) <> semi
 formatStmt (Skip _) = empty
 formatStmt (Assert e _) =
   text "assert" <> parens (formatExpr e) <> semi
-formatStmt (Debug _ _) = error "Not supported in C++ traslation"
+formatStmt (Debug _ _) = error "Debug: Not supported in C++ translation"
 
 -- Main procedure
 formatMain :: ProcMain -> Doc
