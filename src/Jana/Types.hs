@@ -268,15 +268,16 @@ performOperation SL (JInt ival)           (JInt shiftval)       _  _  =
   return $ opFunc SL (intValueToValueType ival) (unpackIntValue ival) (unpackIntValue shiftval)
 performOperation SR (JInt ival)           (JInt shiftval)       _  _  =
   return $ opFunc SR (intValueToValueType ival) (unpackIntValue ival) (unpackIntValue shiftval)
-performOperation op (JInt (JUnbound i1))  (JInt (JUnbound i2))  _  _  = return $ opFunc op (JUnbound) i1 i2
-performOperation op (JInt (JI8 i1))       (JInt (JI8 i2))       _  _  = return $ opFunc op (JI8)      i1 i2
-performOperation op (JInt (JI16 i1))      (JInt (JI16 i2))      _  _  = return $ opFunc op (JI16)     i1 i2
-performOperation op (JInt (JI32 i1))      (JInt (JI32 i2))      _  _  = return $ opFunc op (JI32)     i1 i2
-performOperation op (JInt (JI64 i1))      (JInt (JI64 i2))      _  _  = return $ opFunc op (JI64)     i1 i2
-performOperation op (JInt (JU8 i1))       (JInt (JU8 i2))       _  _  = return $ opFunc op (JU8)      i1 i2
-performOperation op (JInt (JU16 i1))      (JInt (JU16 i2))      _  _  = return $ opFunc op (JU16)     i1 i2
-performOperation op (JInt (JU32 i1))      (JInt (JU32 i2))      _  _  = return $ opFunc op (JU32)     i1 i2
-performOperation op (JInt (JU64 i1))      (JInt (JU64 i2))      _  _  = return $ opFunc op (JU64)     i1 i2
+performOperation op (JInt (JUnbound i1))  (JInt (JUnbound i2))  _  _  = return $ opFunc op (JUnbound)  i1 i2
+performOperation op (JInt (JI8 i1))       (JInt (JI8 i2))       _  _  = return $ opFunc op (JI8)       i1 i2
+performOperation op (JInt (JI16 i1))      (JInt (JI16 i2))      _  _  = return $ opFunc op (JI16)      i1 i2
+performOperation op (JInt (JI32 i1))      (JInt (JI32 i2))      _  _  = return $ opFunc op (JI32)      i1 i2
+performOperation op (JInt (JI64 i1))      (JInt (JI64 i2))      _  _  = return $ opFunc op (JI64)      i1 i2
+performOperation op (JInt (JU8 i1))       (JInt (JU8 i2))       _  _  = return $ opFunc op (JU8)       i1 i2
+performOperation op (JInt (JU16 i1))      (JInt (JU16 i2))      _  _  = return $ opFunc op (JU16)      i1 i2
+performOperation op (JInt (JU32 i1))      (JInt (JU32 i2))      _  _  = return $ opFunc op (JU32)      i1 i2
+performOperation op (JInt (JU64 i1))      (JInt (JU64 i2))      _  _  = return $ opFunc op (JU64)      i1 i2
+performOperation op (JInt (JInferInt i1)) (JInt (JInferInt i2)) _  _  = return $ opFunc op (JInferInt) i1 i2
 performOperation op (JInt (JInferInt i1)) (JInt ival)           p1 p2 =
   performOperation op (JInt (intTypeToValueType (intValueToIntType ival) i1)) (JInt ival) p1 p2
 performOperation op (JInt ival)           (JInt (JInferInt i2)) p1 p2 =
