@@ -111,9 +111,9 @@ formatExpr = f 0
     f _ (Empty _ _)         = error "empty: Not supported in C++ translation"
     f _ (Top _ _)           = error "top: Not supported in C++ translation"
     f _ (Size _ _)          = error "size: Not supported in C++ translation"
-    f _ (ArrayE es _)       = braces $ cat (intersperse (text ", ") (map formatExpr es))
+    f _ (ArrayE es _)       = braces $ hcat (intersperse (text ", ") (map formatExpr es))
     f _ (Nil _)             = error "nil: Not supported in C++ translation"
-    f d (TypeCast typ expr) = parens' (d > 6) (formatType typ <+> f 6 expr)
+    f d (TypeCast typ expr) = parens' (d > 6) ((parens (formatType typ)) <+> f 6 expr)
     f d (UnaryOp op e)      =
       let opd = unaryOpPrec op in
         parens' (d > opd) (formatUnaryOp op <> f opd e)
