@@ -724,6 +724,10 @@ evalExpr itype lv expr@(BinOp LOr e1 e2) = inExpression expr $
      if x
        then return $ JBool True
        else liftM JBool $ unpackBool (getExprPos e2) =<< evalModularAliasExpr itype lv e2
+evalExpr itype lv expr@(BinOp op e1 e2) | (op == SL) || (op == SR) = inExpression expr $
+  do x <- evalModularAliasExpr itype lv e1
+     y <- evalModularAliasExpr InferInt lv e2
+     performOperation op x y (getExprPos e1) (getExprPos e2)
 evalExpr itype lv expr@(BinOp op e1 e2) = inExpression expr $
   do x <- evalModularAliasExpr itype lv e1
      y <- evalModularAliasExpr itype lv e2
