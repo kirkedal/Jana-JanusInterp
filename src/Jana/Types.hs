@@ -57,37 +57,39 @@ data Value
   deriving (Eq)
 
 data IntValue
-  = JUnbound Integer
-  | JI8      Int8
-  | JI16     Int16
-  | JI32     Int32
-  | JI64     Int64
-  | JU8      Word8
-  | JU16     Word16
-  | JU32     Word32
-  | JU64     Word64
+  = JUnbound  Integer
+  | JI8       Int8
+  | JI16      Int16
+  | JI32      Int32
+  | JI64      Int64
+  | JU8       Word8
+  | JU16      Word16
+  | JU32      Word32
+  | JU64      Word64
+  | JInferInt Integer
   deriving (Eq)
 
 instance Show Value where
   show (JBool True)       = "true"
   show (JBool False)      = "false"
-  show (JInt x)         = show x
-  show (JArray [] _)    = ""
+  show (JInt x)           = show x
+  show (JArray [] _)      = ""
   show (JArray [_] xs)    = "{" ++ intercalate ", " (map show xs) ++ "}"
   show (JArray (i:is) xs) = "{" ++ intercalate ", " (map (\x -> show $ JArray is x) $ partitionInto i xs) ++ "}"
   show (JStack [])        = "nil"
   show (JStack xs)        = "<" ++ intercalate ", " (map show xs) ++ "]"
 
 instance Show IntValue where
-  show (JUnbound i) = show i
-  show (JI8      i) = show i
-  show (JI16     i) = show i
-  show (JI32     i) = show i
-  show (JI64     i) = show i
-  show (JU8      i) = show i
-  show (JU16     i) = show i
-  show (JU32     i) = show i
-  show (JU64     i) = show i
+  show (JUnbound  i) = show i
+  show (JI8       i) = show i
+  show (JI16      i) = show i
+  show (JI32      i) = show i
+  show (JI64      i) = show i
+  show (JU8       i) = show i
+  show (JU16      i) = show i
+  show (JU32      i) = show i
+  show (JU64      i) = show i
+  show (JInferInt i) = show i
 
 zeroValue :: IntType -> IntValue
 zeroValue t = f t 0
@@ -96,15 +98,16 @@ zeroValue t = f t 0
     f = intTypeToValueType
 
 unpackIntValue :: IntValue -> Integer
-unpackIntValue (JUnbound i) = i
-unpackIntValue (JI8      i) = toInteger i
-unpackIntValue (JI16     i) = toInteger i
-unpackIntValue (JI32     i) = toInteger i
-unpackIntValue (JI64     i) = toInteger i
-unpackIntValue (JU8      i) = toInteger i
-unpackIntValue (JU16     i) = toInteger i
-unpackIntValue (JU32     i) = toInteger i
-unpackIntValue (JU64     i) = toInteger i
+unpackIntValue (JUnbound  i) = i
+unpackIntValue (JI8       i) = toInteger i
+unpackIntValue (JI16      i) = toInteger i
+unpackIntValue (JI32      i) = toInteger i
+unpackIntValue (JI64      i) = toInteger i
+unpackIntValue (JU8       i) = toInteger i
+unpackIntValue (JU16      i) = toInteger i
+unpackIntValue (JU32      i) = toInteger i
+unpackIntValue (JU64      i) = toInteger i
+unpackIntValue (JInferInt i) = toInteger i
 
 typeToValueType :: Integral a => Type -> a -> IntValue
 typeToValueType (Int itype _) = intTypeToValueType itype
@@ -122,6 +125,7 @@ intTypeToValueType U8       = JU8 . fromIntegral
 intTypeToValueType U16      = JU16 . fromIntegral
 intTypeToValueType U32      = JU32 . fromIntegral
 intTypeToValueType U64      = JU64 . fromIntegral
+intTypeToValueType InferInt = JInferInt . fromIntegral
 
 valueToValueType :: Integral a => Value -> a -> IntValue
 valueToValueType (JInt ival)   = intTypeToValueType (intValueToIntType ival)
@@ -136,15 +140,16 @@ valueToIntType (JArray _ a)  = intValueToIntType $ head a
 valueToIntType (JStack s)    = intValueToIntType $ head s
 
 intValueToIntType :: IntValue -> IntType
-intValueToIntType (JUnbound _) = Unbound
-intValueToIntType (JI8      _) = I8
-intValueToIntType (JI16     _) = I16
-intValueToIntType (JI32     _) = I32
-intValueToIntType (JI64     _) = I64
-intValueToIntType (JU8      _) = U8
-intValueToIntType (JU16     _) = U16
-intValueToIntType (JU32     _) = U32
-intValueToIntType (JU64     _) = U64
+intValueToIntType (JUnbound  _) = Unbound
+intValueToIntType (JI8       _) = I8
+intValueToIntType (JI16      _) = I16
+intValueToIntType (JI32      _) = I32
+intValueToIntType (JI64      _) = I64
+intValueToIntType (JU8       _) = U8
+intValueToIntType (JU16      _) = U16
+intValueToIntType (JU32      _) = U32
+intValueToIntType (JU64      _) = U64
+intValueToIntType (JInferInt _) = InferInt
 
 intValueToValueType :: Integral a => IntValue -> a -> IntValue
 intValueToValueType v = intTypeToValueType $ intValueToIntType v
@@ -171,15 +176,16 @@ showValueType (JArray i _) = "array" ++ "[" ++ intercalate ", " (map show i) ++ 
 showValueType (JBool _)    = "bool"
 
 showIntValue :: IntValue -> [Char]
-showIntValue (JUnbound _) = "int"
-showIntValue (JI8      _) = "i8"
-showIntValue (JI16     _) = "i16"
-showIntValue (JI32     _) = "i32"
-showIntValue (JI64     _) = "i64"
-showIntValue (JU8      _) = "u8"
-showIntValue (JU16     _) = "u16"
-showIntValue (JU32     _) = "u32"
-showIntValue (JU64     _) = "u64"
+showIntValue (JUnbound  _) = "int"
+showIntValue (JI8       _) = "i8"
+showIntValue (JI16      _) = "i16"
+showIntValue (JI32      _) = "i32"
+showIntValue (JI64      _) = "i64"
+showIntValue (JU8       _) = "u8"
+showIntValue (JU16      _) = "u16"
+showIntValue (JU32      _) = "u32"
+showIntValue (JU64      _) = "u64"
+showIntValue (JInferInt _) = error "Inferred ints must be inferred before."
 
 typesMatch :: Value -> Value -> Bool
 typesMatch (JInt i1) (JInt i2) = typesMatchInt i1 i2
@@ -191,16 +197,18 @@ typesMatch (JBool _)  (JBool _)  = True
 typesMatch _          _          = False
 
 typesMatchInt :: IntValue -> IntValue -> Bool
-typesMatchInt (JUnbound _) (JUnbound _) = True
-typesMatchInt (JI8      _) (JI8      _) = True
-typesMatchInt (JI16     _) (JI16     _) = True
-typesMatchInt (JI32     _) (JI32     _) = True
-typesMatchInt (JI64     _) (JI64     _) = True
-typesMatchInt (JU8      _) (JU8      _) = True
-typesMatchInt (JU16     _) (JU16     _) = True
-typesMatchInt (JU32     _) (JU32     _) = True
-typesMatchInt (JU64     _) (JU64     _) = True
-typesMatchInt _            _            = False
+typesMatchInt (JUnbound  _) (JUnbound _)  = True
+typesMatchInt (JI8       _) (JI8      _)  = True
+typesMatchInt (JI16      _) (JI16     _)  = True
+typesMatchInt (JI32      _) (JI32     _)  = True
+typesMatchInt (JI64      _) (JI64     _)  = True
+typesMatchInt (JU8       _) (JU8      _)  = True
+typesMatchInt (JU16      _) (JU16     _)  = True
+typesMatchInt (JU32      _) (JU32     _)  = True
+typesMatchInt (JU64      _) (JU64     _)  = True
+typesMatchInt (JInferInt _) _             = True
+typesMatchInt _             (JInferInt _) = True
+typesMatchInt _              _            = False
 
 nil :: Value
 nil = JStack []
@@ -256,19 +264,23 @@ performOperation Div (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ =
        _ -> return $ opFunc Div (JUnbound) i1 i2
   where
     multInv a p = (\(_,i,_) -> i) $ extendedGCD a (toInteger p)
-performOperation SL (JInt ival)          (JInt shiftval)      _ _ =
+performOperation SL (JInt ival)           (JInt shiftval)       _  _  =
   return $ opFunc SL (intValueToValueType ival) (unpackIntValue ival) (unpackIntValue shiftval)
-performOperation SR (JInt ival)          (JInt shiftval)      _ _ =
+performOperation SR (JInt ival)           (JInt shiftval)       _  _  =
   return $ opFunc SR (intValueToValueType ival) (unpackIntValue ival) (unpackIntValue shiftval)
-performOperation op (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ = return $ opFunc op (JUnbound) i1 i2
-performOperation op (JInt (JI8 i1))      (JInt (JI8 i2))      _ _ = return $ opFunc op (JI8)      i1 i2
-performOperation op (JInt (JI16 i1))     (JInt (JI16 i2))     _ _ = return $ opFunc op (JI16)     i1 i2
-performOperation op (JInt (JI32 i1))     (JInt (JI32 i2))     _ _ = return $ opFunc op (JI32)     i1 i2
-performOperation op (JInt (JI64 i1))     (JInt (JI64 i2))     _ _ = return $ opFunc op (JI64)     i1 i2
-performOperation op (JInt (JU8 i1))      (JInt (JU8 i2))      _ _ = return $ opFunc op (JU8)      i1 i2
-performOperation op (JInt (JU16 i1))     (JInt (JU16 i2))     _ _ = return $ opFunc op (JU16)     i1 i2
-performOperation op (JInt (JU32 i1))     (JInt (JU32 i2))     _ _ = return $ opFunc op (JU32)     i1 i2
-performOperation op (JInt (JU64 i1))     (JInt (JU64 i2))     _ _ = return $ opFunc op (JU64)     i1 i2
+performOperation op (JInt (JUnbound i1))  (JInt (JUnbound i2))  _  _  = return $ opFunc op (JUnbound) i1 i2
+performOperation op (JInt (JI8 i1))       (JInt (JI8 i2))       _  _  = return $ opFunc op (JI8)      i1 i2
+performOperation op (JInt (JI16 i1))      (JInt (JI16 i2))      _  _  = return $ opFunc op (JI16)     i1 i2
+performOperation op (JInt (JI32 i1))      (JInt (JI32 i2))      _  _  = return $ opFunc op (JI32)     i1 i2
+performOperation op (JInt (JI64 i1))      (JInt (JI64 i2))      _  _  = return $ opFunc op (JI64)     i1 i2
+performOperation op (JInt (JU8 i1))       (JInt (JU8 i2))       _  _  = return $ opFunc op (JU8)      i1 i2
+performOperation op (JInt (JU16 i1))      (JInt (JU16 i2))      _  _  = return $ opFunc op (JU16)     i1 i2
+performOperation op (JInt (JU32 i1))      (JInt (JU32 i2))      _  _  = return $ opFunc op (JU32)     i1 i2
+performOperation op (JInt (JU64 i1))      (JInt (JU64 i2))      _  _  = return $ opFunc op (JU64)     i1 i2
+performOperation op (JInt (JInferInt i1)) (JInt ival)           p1 p2 =
+  performOperation op (JInt (intTypeToValueType (intValueToIntType ival) i1)) (JInt ival) p1 p2
+performOperation op (JInt ival)           (JInt (JInferInt i1)) p1 p2 =
+  performOperation op (JInt (intTypeToValueType (intValueToIntType ival) i1)) (JInt ival) p1 p2
 performOperation _ val1 val2 _ pos =
   pos <!!> typeMismatch [showValueType val1] (showValueType val2)
 

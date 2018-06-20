@@ -68,7 +68,7 @@ unpackBool pos val = pos <!!> typeMismatch ["bool"] (showValueType val)
 
 assert :: Bool -> Expr -> Eval ()
 assert bool expr =
-  do val1 <- unpackBool (getExprPos expr) =<< evalModularExpr Unbound expr
+  do val1 <- unpackBool (getExprPos expr) =<< evalModularExpr InferInt expr
      unless (val1 == bool) $ pos <!!> msg
   where
     msg = assertionFail ("should be " ++ map toLower (show bool))
@@ -443,7 +443,7 @@ evalStmt (Debug Normal pos) =
        (liftIO $ putStrLn $ "[Break at line " ++ (show $ sourceLine pos) ++ "] ") >> makeBreak pos
 evalStmt (Assign modOp lval expr pos) = assignLval modOp lval expr pos
 evalStmt (If e1 s1 s2 e2 _) =
-  do val1 <- unpackBool (getExprPos e1) =<< evalModularExpr Unbound e1
+  do val1 <- unpackBool (getExprPos e1) =<< evalModularExpr InferInt e1
      if val1
        then do evalStmts s1
                whenForwardExecution  (assertTrue e2 >> whenBackwardExecution (evalStmts s1))
@@ -455,7 +455,7 @@ evalStmt (From e1 s1 s2 e2 _) =
   do assertTrue e1
      whenForwardExecution loop
   where loop = do evalStmts s1
-                  val <- unpackBool (getExprPos e2) =<< evalModularExpr Unbound e2
+                  val <- unpackBool (getExprPos e2) =<< evalModularExpr InferInt e2
                   whenForwardExecution (unless val (loopRec >> whenBackwardExecution (assertFalse e2 >> evalStmts s1)))
         loopRec = do evalStmts s2
                      whenForwardExecution

@@ -1,0 +1,17 @@
+procedure main()
+    u32 k = 2
+
+//  iterate u32 i = 1 to 5
+//    print("loop1")
+//  end
+
+  from k = 4 loop
+    print("loop2")
+    k += 1
+  until k < 6
+
+
+    local u32 test2 = 0xFFFF0000
+    local u32 test3 = 0
+    local int r = 8
+    test3 += test2 << r

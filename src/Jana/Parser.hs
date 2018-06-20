@@ -97,9 +97,10 @@ integer    = try binary <|> (Token.integer lexer)
       do symbol "0b"
          bin <- many1 (symbol "0" <|> symbol "1")
          return $ convert $ reverse bin
-    convert [] = 0
+    convert []         = 0
     convert ("0" : xs) = 2 * convert xs
     convert ("1" : xs) = 1 + 2 * convert xs
+    convert _          = error "Parsing non-binary value."
 
 comma :: Parser String
 comma      = Token.comma      lexer -- parses a comma

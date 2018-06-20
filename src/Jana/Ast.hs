@@ -19,6 +19,7 @@ data IntType
     | U16
     | U32
     | U64
+    | InferInt
     deriving (Eq)
 
 

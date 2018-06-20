@@ -28,6 +28,7 @@ formatIntType U8       = text "u8"
 formatIntType U16      = text "u16"
 formatIntType U32      = text "u32"
 formatIntType U64      = text "u84"
+formatIntType InferInt = error "Inferable ints should be inferred."  -- HACK
 
 
 formatIdent :: Ident -> Doc
