@@ -1,0 +1,277 @@
+// Schroedinger Wave Equation simulation program.
+
+// M. P. Frank. Reversibility for Efficient Computing.
+// PhD thesis, EECS Dept., MIT, 1999.
+
+epsilon
+alphas[128] psiR[128] psiI[128]
+i j
+
+procedure init
+    epsilon+=203667001
+    alphas[00]+=458243442
+    alphas[01]+=456664951
+    alphas[02]+=455111319
+    alphas[03]+=453582544
+    alphas[04]+=452078627
+    alphas[05]+=450599569
+    alphas[06]+=449145369
+    alphas[07]+=447716027
+    alphas[08]+=446311542
+    alphas[09]+=444931917
+    alphas[10]+=443577149
+    alphas[11]+=442247239
+    alphas[12]+=440942188
+    alphas[13]+=439661994
+    alphas[14]+=438406659
+    alphas[15]+=437176182
+    alphas[16]+=435970563
+    alphas[17]+=434789802
+    alphas[18]+=433633899
+    alphas[19]+=432502854
+    alphas[20]+=431396668
+    alphas[21]+=430315339
+    alphas[22]+=429258869
+    alphas[23]+=428227257
+    alphas[24]+=427220503
+    alphas[25]+=426238607
+    alphas[26]+=425281569
+    alphas[27]+=424349389
+    alphas[28]+=423442068
+    alphas[29]+=422559605
+    alphas[30]+=421701999
+    alphas[31]+=420869252
+    alphas[32]+=420061363
+    alphas[33]+=419278332
+    alphas[34]+=418520159
+    alphas[35]+=417786845
+    alphas[36]+=417078388
+    alphas[37]+=416394790
+    alphas[38]+=415736049
+    alphas[39]+=415102167
+    alphas[40]+=414493143
+    alphas[41]+=413908977
+    alphas[42]+=413349669
+    alphas[43]+=412815220
+    alphas[44]+=412305628
+    alphas[45]+=411820895
+    alphas[46]+=411361019
+    alphas[47]+=410926002
+    alphas[48]+=410515843
+    alphas[49]+=410130542
+    alphas[50]+=409770099
+    alphas[51]+=409434515
+    alphas[52]+=409123788
+    alphas[53]+=408837920
+    alphas[54]+=408576909
+    alphas[55]+=408340757
+    alphas[56]+=408129463
+    alphas[57]+=407943027
+    alphas[58]+=407781450
+    alphas[59]+=407644730
+    alphas[60]+=407532868
+    alphas[61]+=407445865
+    alphas[62]+=407383720
+    alphas[63]+=407346432
+    alphas[64]+=407334003
+    alphas[65]+=407346432
+    alphas[66]+=407383720
+    alphas[67]+=407445865
+    alphas[68]+=407532868
+    alphas[69]+=407644730
+    alphas[70]+=407781450
+    alphas[71]+=407943027
+    alphas[72]+=408129463
+    alphas[73]+=408340757
+    alphas[74]+=408576909
+    alphas[75]+=408837920
+    alphas[76]+=409123788
+    alphas[77]+=409434515
+    alphas[78]+=409770099
+    alphas[79]+=410130542
+    alphas[80]+=410515843
+    alphas[81]+=410926002
+    alphas[82]+=411361019
+    alphas[83]+=411820895
+    alphas[84]+=412305628
+    alphas[85]+=412815220
+    alphas[86]+=413349669
+    alphas[87]+=413908977
+    alphas[88]+=414493143
+    alphas[89]+=415102167
+    alphas[90]+=415736049
+    alphas[91]+=416394790
+    alphas[92]+=417078388
+    alphas[93]+=417786845
+    alphas[94]+=418520159
+    alphas[95]+=419278332
+    alphas[96]+=420061363
+    alphas[97]+=420869252
+    alphas[98]+=421701999
+    alphas[99]+=422559605
+    alphas[100]+=423442068
+    alphas[101]+=424349389
+    alphas[102]+=425281569
+    alphas[103]+=426238607
+    alphas[104]+=427220503
+    alphas[105]+=428227257
+    alphas[106]+=429258869
+    alphas[107]+=430315339
+    alphas[108]+=431396668
+    alphas[109]+=432502854
+    alphas[110]+=433633899
+    alphas[111]+=434789802
+    alphas[112]+=435970563
+    alphas[113]+=437176182
+    alphas[114]+=438406659
+    alphas[115]+=439661994
+    alphas[116]+=440942188
+    alphas[117]+=442247239
+    alphas[118]+=443577149
+    alphas[119]+=444931917
+    alphas[120]+=446311542
+    alphas[121]+=447716027
+    alphas[122]+=449145369
+    alphas[123]+=450599569
+    alphas[124]+=452078627
+    alphas[125]+=453582544
+    alphas[126]+=455111319
+    alphas[127]+=456664951
+
+    psiR[0]+=2072809
+    psiR[1]+=3044772
+    psiR[2]+=4418237
+    psiR[3]+=6333469
+    psiR[4]+=8968770
+    psiR[5]+=12546502
+    psiR[6]+=17338479
+    psiR[7]+=23669980
+    psiR[8]+=31921503
+    psiR[9]+=42527251
+    psiR[10]+=55969298
+    psiR[11]+=72766411
+    psiR[12]+=93456735
+    psiR[13]+=118573819
+    psiR[14]+=148615999
+    psiR[15]+=184009768
+    psiR[16]+=225068513
+    psiR[17]+=271948808
+    psiR[18]+=324607187
+    psiR[19]+=382760978
+    psiR[20]+=445857149
+    psiR[21]+=513053161
+    psiR[22]+=583213481
+    psiR[23]+=654924586
+    psiR[24]+=726530060
+    psiR[25]+=796185813
+    psiR[26]+=861933650
+    psiR[27]+=921789572
+    psiR[28]+=973841548
+    psiR[29]+=1016350163
+    psiR[30]+=1047844835
+    psiR[31]+=1067208183
+    psiR[32]+=1073741824
+    psiR[33]+=1067208183
+    psiR[34]+=1047844835
+    psiR[35]+=1016350163
+    psiR[36]+=973841548
+    psiR[37]+=921789572
+    psiR[38]+=861933650
+    psiR[39]+=796185813
+    psiR[40]+=726530060
+    psiR[41]+=654924586
+    psiR[42]+=583213481
+    psiR[43]+=513053161
+    psiR[44]+=445857149
+    psiR[45]+=382760978
+    psiR[46]+=324607187
+    psiR[47]+=271948808
+    psiR[48]+=225068513
+    psiR[49]+=184009768
+    psiR[50]+=148615999
+    psiR[51]+=118573819
+    psiR[52]+=93456735
+    psiR[53]+=72766411
+    psiR[54]+=55969298
+    psiR[55]+=42527251
+    psiR[56]+=31921503
+    psiR[57]+=23669980
+    psiR[58]+=17338479
+    psiR[59]+=12546502
+    psiR[60]+=8968770
+    psiR[61]+=6333469
+    psiR[62]+=4418237
+    psiR[63]+=3044772
+    psiR[64]+=2072809
+    psiR[65]+=1393998
+    psiR[66]+=926112
+    psiR[67]+=607804
+    psiR[68]+=394060
+    psiR[69]+=252382
+    psiR[70]+=159681
+    psiR[71]+=99804
+    psiR[72]+=61622
+    psiR[73]+=37586
+    psiR[74]+=22647
+    psiR[75]+=13480
+    psiR[76]+=7926
+    psiR[77]+=4604
+    psiR[78]+=2642
+    psiR[79]+=1497
+    psiR[80]+=838
+    psiR[81]+=463
+    psiR[82]+=253
+    psiR[83]+=136
+    psiR[84]+=73
+    psiR[85]+=38
+    psiR[86]+=20
+    psiR[87]+=10
+    psiR[88]+=5
+    psiR[89]+=2
+    psiR[90]+=1
+
+procedure pfuncR
+    psiR[i] += alphas[i] */ psiI[i]
+    psiR[i] -= epsilon */ psiI[(i+1)&127]
+    psiR[i] -= epsilon */ psiI[(i-1)&127]
+
+procedure pfuncI
+    psiI[i] += alphas[i] */ psiR[i]
+    psiI[i] -= epsilon */ psiR[(i+1)&127]
+    psiI[i] -= epsilon */ psiR[(i-1)&127]
+    
+procedure schstep
+    from  i=0
+    loop  call pfuncR
+          i+=1
+    until i=128
+    i-=128
+    from  i=0
+    loop  uncall pfuncI
+          i+=1
+    until i=128
+    i-=128
+
+procedure printwave
+    from  i=0
+    loop  write psiR[i]
+          i+=1
+    until i=128
+    i-=128
+    from  i=0
+    loop  write psiI[i]
+          i+=1
+    until i=128
+    i-=128
+
+procedure schroed
+    from  j=0
+    loop  call schstep
+          j+=1
+    until j=1000
+    j-=1000
+
+procedure main
+    call init
+    call schroed
+    call printwave

@@ -1,0 +1,66 @@
+// Factorization program in the time reversible language Janus
+
+// C. Lutz and H. Derby.
+// Janus: a time-reversible language. A letter to Landauer.
+// Available at http://www.cise.ufl.edu/%7Empf/rc/janus.html,
+// 1982.
+
+// Operator names are different from the original program.
+// #, :, &, \ ===> !=, <=>, &&, %
+
+num      // Number to factor.  Ends up zero
+try      // Attempted factor.  Starts and ends zero
+z        // Temporary.  Starts and ends zero
+i        // Pointer to last factor in factor table.  Starts zero
+fact[20] // Factor table.  Starts zero. Ends with factors in ascending order
+
+procedure factor                             // factor num into table in fact[]
+      from  (try=0) && (num>1)
+      loop  call nexttry
+            from  fact[i]!=try               // Divide out all occurrences of this
+            loop  i += 1                     // factor
+                  fact[i] += try
+                  z += num/try
+                  z <=> num
+                  z -= num*try
+            until (num%try)!=0
+      until (try*try)>num                    // Exit early if possible
+
+      if    num != 1
+      then  i += 1                           // Put last prime away, if not done
+            fact[i] <=> num                  // and zero num
+      else  num -= 1
+      fi    fact[i] != fact[i-1]
+
+      if    (fact[i-1]*fact[i-1]) < fact[i]  // Zero try
+      then  from  (try*try) > fact[i]
+            loop  uncall nexttry
+            until try=0
+      else  try -= fact[i-1]
+      fi    (fact[i-1]*fact[i-1]) < fact[i]
+
+      call  zeroi                            // Zero i
+
+procedure zeroi
+      from  fact[i+1] = 0
+      loop  i -= 1
+      until i = 0
+
+procedure nexttry
+      try += 2
+      if    try=4
+      then  try -= 1
+      fi    try=3
+
+procedure main_fwd
+      num+=840
+      call factor
+
+procedure main_bwd
+      fact[1]+=2
+      fact[2]+=2
+      fact[3]+=2
+      fact[4]+=3
+      fact[5]+=5
+      fact[6]+=7
+      uncall factor

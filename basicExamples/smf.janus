@@ -1,0 +1,42 @@
+m1 m2 out
+m1p m2p position mask
+
+tmp
+
+procedure smf // m1 m2 -> out
+   if m1 > 0
+   then m1p += m1
+   else m1p -= m1
+   fi m1 > 0
+   if m2 > 0
+   then m2p += m2
+   else m2p -= m2
+   fi m2 > 0
+   mask += 1 << 31
+   from  position = 0
+   do    position += 1
+         //mask >>= 1
+   loop  if m1p & mask
+         then out += m2p >> position
+         fi m1p & mask
+   until position = 32
+   if m1 > 0
+   then m1p -= m1
+   else m1p += m1
+        m1p += out
+        out -= m1p * 2
+        m1p -= out / 2
+   fi m1 > 0
+   if m2 > 0
+   then m2p -= m2
+   else m2p += m2
+        m2p += out
+        out -= m2p * 2
+        m2p -= out / 2
+   fi m2 > 0
+
+procedure main
+   m1 += 2
+   m2 += 3
+   call smf
+   write out

@@ -1,0 +1,21 @@
+// David Gries: The science of programming, 1987
+// pp.268
+
+k n i j b[20]
+
+procedure swap_equals
+    from  k = 0
+    loop  b[i+k] <=> b[j+k]
+          k += 1
+    until k = n
+
+procedure test
+    from  i = 0
+    loop  b[i] ^= i
+          i += 1
+    until i=20
+    i -= 20
+    i += 5
+    j += 15
+    n += 3
+    call swap_equals

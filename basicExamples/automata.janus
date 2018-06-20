@@ -1,0 +1,102 @@
+// Simulation of One-Dimensional Reversible Cellular Automata
+
+map[112]  // cell mapping
+cell[3]       // cell state
+cells          // number of cells
+steps         // number of generations
+
+// temporary varables
+rmap[112] // inverse mapping
+i j              // cell index
+n t1 t2 l r   // tmp values
+
+// Single cell step: cell[i] -> map(cell[i])
+procedure cell
+    t1 <=> cell[i]
+    t2 ^= map[t1]
+    t1 ^= rmap[t2]
+    t2 <=> cell[i]
+
+// Get left and right value
+procedure swapAux
+    // Get right of cell[i]
+    r ^= cell[i] & 1
+    cell[i] ^= r
+    // Get left of cell[j]
+    if (cell[j] & 100) = 100
+    then l ^= 1
+            cell[j] ^= 100
+    fi l = 1
+
+// Swap left and right of cell i and j
+procedure swap
+    call swapAux
+    l <=> r
+    uncall swapAux
+
+// Swap all cells
+procedure communicate
+    // Swap RL of cell (0,1), ..., (n-1, n)
+    from i = 0
+    do    j ^= i + 1
+            call swap
+            j ^= i + 1
+    loop i += 1
+    until i = cells - 2
+    // Swap RL of cell (n, 0)
+    i += 1
+    call swap
+    i ^= cells - 1
+
+procedure output
+    from i = 0
+    do write cell[i]
+         i += 1
+    until i = cells
+    i ^= cells
+
+// Main simulation
+procedure simulation
+     call output
+    from n = 0 // foreach generation
+    do from i = 0 // foreach cell
+         do call cell
+              i += 1
+         until i = cells
+         i ^= cells
+        call communicate // perform all swaps
+        n += 1
+        call output
+    until n = steps
+    n ^= steps
+
+// Compute inverse mapping
+procedure compInvMap
+    from n = 0
+    do rmap[map[n]] ^= n
+         n += 1
+    until n = 112
+    n ^= 112
+
+procedure main
+    // Initialize cell mapping (needs to be injective)
+    map[000] ^= 000
+    map[001] ^= 010
+    map[010] ^= 100
+    map[011] ^= 011
+    map[100] ^= 001
+    map[101] ^= 101
+    map[110] ^= 110
+    map[111] ^= 111
+    call compInvMap
+
+    // Initialize cell states
+    cells ^= 3
+    cell[0] ^= 100
+    cell[1] ^= 100
+
+    // Generations
+    steps ^= 1
+
+    // Initiate simulation
+    call simulation
