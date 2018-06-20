@@ -279,8 +279,8 @@ performOperation op (JInt (JU32 i1))      (JInt (JU32 i2))      _  _  = return $
 performOperation op (JInt (JU64 i1))      (JInt (JU64 i2))      _  _  = return $ opFunc op (JU64)     i1 i2
 performOperation op (JInt (JInferInt i1)) (JInt ival)           p1 p2 =
   performOperation op (JInt (intTypeToValueType (intValueToIntType ival) i1)) (JInt ival) p1 p2
-performOperation op (JInt ival)           (JInt (JInferInt i1)) p1 p2 =
-  performOperation op (JInt (intTypeToValueType (intValueToIntType ival) i1)) (JInt ival) p1 p2
+performOperation op (JInt ival)           (JInt (JInferInt i2)) p1 p2 =
+  performOperation op (JInt ival) (JInt (intTypeToValueType (intValueToIntType ival) i2)) p1 p2
 performOperation _ val1 val2 _ pos =
   pos <!!> typeMismatch [showValueType val1] (showValueType val2)
 
