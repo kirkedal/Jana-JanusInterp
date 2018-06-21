@@ -118,7 +118,8 @@ formatExpr = f 0
     f d (UnaryOp op e)      =
       let opd = unaryOpPrec op in
         parens' (d > opd) (formatUnaryOp op <> f opd e)
-    f _ (BinOp Exp e1 e2)  = text "pow" <> parens (formatExpr e1 <> comma <+> formatExpr e2)
+    f _ (BinOp Exp (Number 2 _) e2)  = parens (text "1 << " <> parens (formatExpr e2))
+    f _ (BinOp Exp e1 e2)  = text "(long) pow" <> parens (formatExpr e1 <> comma <+> formatExpr e2)
     f d (BinOp op e1 e2)  =
       let opd = binOpPrec op in
         parens' (d > opd) (f opd e1 <+> formatBinOp op <+> f opd e2)
