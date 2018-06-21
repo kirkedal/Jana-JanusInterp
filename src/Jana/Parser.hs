@@ -178,6 +178,7 @@ declType = option Variable (ancilla <|> constant)
 
 statement :: Parser Stmt
 statement =   assignStmt
+          <|> ancillaStmt
           <|> constantStmt
           <|> ifStmt
           <|> fromStmt
@@ -277,6 +278,21 @@ twoArgs =
      comma
      y <- identifier
      return (x,y)
+
+ancillaStmt :: Parser Stmt
+ancillaStmt =
+  do pos      <- getPosition
+     reserved "ancilla"
+     typ  <- atype
+     idnt <- identifier
+     decl <- case typ of
+       (Int itype _) -> liftM2 (\x y -> (LocalArray Ancilla itype idnt x y pos))
+                               (many1 $ brackets $ optionMaybe expression)
+                               (optionMaybe $ reservedOp "=" >> array)
+              <|> liftM  (\x -> (LocalVar Ancilla typ idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
+       _       -> liftM  (\x -> (LocalVar Ancilla typ idnt (Just x) pos)) (reservedOp "=" >> expression)
+     stats    <- many statement
+     return $ Local decl stats decl pos
 
 constantStmt :: Parser Stmt
 constantStmt =
