@@ -29,6 +29,7 @@ formatType (BoolT _) = error "Stack not supported in C Translation"
 
 formatIntType :: IntType -> Doc
 formatIntType FreshVar = text "int"   -- HACK
+formatIntType InferInt = error "Infer cannot be a definition."
 formatIntType Unbound  = text "int"
 formatIntType I8       = text "signed char"
 formatIntType I16      = text "signed short"
@@ -110,14 +111,14 @@ formatExpr = f 0
     f _ (LV lval _)         = formatLval lval
     f _ (Empty _ _)         = error "empty: Not supported in C++ translation"
     f _ (Top _ _)           = error "top: Not supported in C++ translation"
-    f _ (Size _ _)          = error "size: Not supported in C++ translation"
+    f _ (Size idnt _)       = text "max_size" <> (parens $ formatIdent Value idnt)
     f _ (ArrayE es _)       = braces $ hcat (intersperse (text ", ") (map formatExpr es))
     f _ (Nil _)             = error "nil: Not supported in C++ translation"
     f d (TypeCast typ expr) = parens' (d > 6) ((parens (formatType typ)) <+> f 6 expr)
     f d (UnaryOp op e)      =
       let opd = unaryOpPrec op in
         parens' (d > opd) (formatUnaryOp op <> f opd e)
-    f d (BinOp Exp e1 e2)  = text "pow" <> parens (formatExpr e1 <> comma <+> formatExpr e2)
+    f _ (BinOp Exp e1 e2)  = text "pow" <> parens (formatExpr e1 <> comma <+> formatExpr e2)
     f d (BinOp op e1 e2)  =
       let opd = binOpPrec op in
         parens' (d > opd) (f opd e1 <+> formatBinOp op <+> f opd e2)
@@ -132,7 +133,7 @@ formatLocalDecl (LocalArray ityp idnt iexprs expr p) = formatVdecl (Array Variab
 formatAssertLocalDecl :: LocalDecl -> Doc
 formatAssertLocalDecl (LocalVar tp idnt Nothing p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
 formatAssertLocalDecl (LocalVar _ idnt (Just expr) p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
-formatAssertLocalDecl (LocalArray intTp idnt sizes expr p) = empty -- not implemented
+formatAssertLocalDecl (LocalArray _ _ _ _ _) = empty -- not implemented
 -- formatAssertLocalDecl (LocalArray intTp idnt sizes expr p) = formatType (Int it p) <+> formatIdent arrId <+> vcat (map formatIndex iexprs)
 -- $+$ formatMaybeExpr expr
 --   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
@@ -166,8 +167,8 @@ formatStmt (Iterate typ idnt startE stepE endE stmts _) =
       text ";" <+> formatIdent Value idnt <+> text "+=" <+> formatExpr stepE)) `stmtWithBody`
     formatStmts stmts
 
-formatStmt (Push _ _ _) = error "Translation of push to C is not supported"
-formatStmt (Pop _ _ _) = error "Translation of push to C is not supported"
+formatStmt (Push _ _ _) = error "Translation of stack operations (push) to C is not supported"
+formatStmt (Pop _ _ _) = error "Translation of stack operations (pop) to C is not supported"
 formatStmt (Local decl1 s decl2 _) =
   formatLocalDecl decl1 $+$
   formatStmts s $+$
@@ -212,31 +213,48 @@ formatVdecl (Scalar vdtyp typ idnt expr _) =
   where
     formatExp (Just e) = equals <+> formatExpr e
     formatExp Nothing  = equals <+> integer 0
-formatVdecl (Array vdtyp itype idnt size a_exp p) =
-  formatVdeclType vdtyp <+> formatType (Int itype p) <+> formatIdent Value idnt <> vcat (map formatSize size) <+> formatExp a_exp <> semi
-  where formatSize (Just e) = brackets $ formatExpr e
-        formatSize Nothing  = brackets empty
+formatVdecl (Array _ itype idnt size a_exp p) =
+  text "std::array<" <> formatType (Int itype p) <> comma <+> vcat (map formatSize size) <> text ">" <+> formatIdent Value idnt <+> formatExp a_exp <> semi
+  where formatSize (Just e) = formatExpr e
+        formatSize Nothing  = empty
         formatExp (Just ex) = equals <+> formatExpr ex
         formatExp Nothing   = equals <+> braces (integer 0)
 
 -- Local procedures
+defineProc :: Proc -> Doc
+defineProc proc =
+  templ $+$
+  (text "void" <+> formatIdent Forward (procname proc) <>
+    parens param) <> text ";"
+  $+$
+  templ $+$
+  (text "void" <+> formatIdent Reverse (procname proc) <>
+    parens param) <> text ";"
+  where
+    (param, templ) = formatParams $ params proc
+
 formatProc :: Proc -> Doc
 formatProc proc =
-  (text "void" <+> formatIdent Forward (procname proc) <>
-    parens (formatParams $ params proc)) `stmtWithBody`
-      (formatStmts $ body proc) $+$
-    (text "void" <+> formatIdent Reverse (procname proc) <>
-    parens (formatParams $ params proc)) `stmtWithBody`
-      (formatStmts $ invertStmts Locally $ body proc)
+  templ $+$
+  (text "void" <+> formatIdent Forward (procname proc) <> parens param) `stmtWithBody`
+  (formatStmts $ body proc)
+  $+$
+  templ $+$
+  (text "void" <+> formatIdent Reverse (procname proc) <> parens param) `stmtWithBody`
+  (formatStmts $ invertStmts Locally $ body proc)
+  where
+    (param, templ) = formatParams $ params proc
 
-formatParam :: Vdecl -> Doc
-formatParam (Scalar vdtyp typ idnt expr _) =
-  formatVdeclType vdtyp <+> formatType typ <+> formatIdent Reference idnt <> formatExp expr
+
+formatParam :: Integer -> Vdecl -> (Doc, [Integer])
+formatParam _ (Scalar vdtyp typ idnt expr _) =
+  (formatVdeclType vdtyp <+> formatType typ <+> formatIdent Reference idnt <> formatExp expr, [])
     where
       formatExp (Just e) = equals $+$ formatExpr e
       formatExp Nothing  = empty
-formatParam (Array vdtyp itype idnt size a_exp p) =
-  formatVdeclType vdtyp <+> formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
+formatParam num (Array _ itype idnt size a_exp p) =
+  (text "std::array<" <> formatType (Int itype p) <> comma <+> text "SIZE" <> integer num <>text ">" <+> formatIdent Reference idnt, [num])
+  -- formatVdeclType vdtyp <+> formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
@@ -246,16 +264,18 @@ formatVdeclType Variable = empty
 formatVdeclType Ancilla = text "ancilla"
 formatVdeclType Constant = text "constant"
 
-formatParams :: [Vdecl] -> Doc
-formatParams = commasep . map formatParam
-
-defineProc :: Proc -> Doc
-defineProc proc =
-  (text "void" <+> formatIdent Forward (procname proc) <>
-    parens (formatParams $ params proc)) <> text ";"
-      $+$
-    (text "void" <+> formatIdent Reverse (procname proc) <>
-    parens (formatParams $ params proc)) <> text ";"
+formatParams :: [Vdecl] -> (Doc, Doc)
+formatParams vdecls =
+  (commasep param, templ)
+  where
+    (param, sizenums) = unzip $ zipWith formatParam (iterate (+ 1) 1) vdecls
+    templ = text "template <" <> commasep (map (\i -> text "std::size_t SIZE" <> integer i) (concat sizenums)) <> text ">"
+    -- arraysizenames :: [Integer]
+    -- arraysizenames = concatMap sizenum (zip (iterate (+ 1) 1) vdecls)
+    -- sizenum :: (Integer, Vdecl) -> [Integer]
+    -- sizenum (_,   (Scalar _ _ _ _ _) ) = []
+    -- sizenum (i, (Array _ _ _ _ _ _))   = [i]
+    -- templates = text "template <" <> commasep (map (\i -> text "std::size_t SIZE" <> integer i) arraysizenames) <> text ">"
 
 
 -- Program
@@ -265,6 +285,7 @@ formatProgram headerfile (Program mains procs) =
   text "#include <stdio.h>      /* printf */" $+$
   text "#include <assert.h>" $+$
   text "#include <math.h>" $+$
+  text "#include <array>" $+$
   text include_header $+$
   text "" $+$
   vcat (intersperse (text "") $ map defineProc procs) $+$
