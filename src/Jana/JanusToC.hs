@@ -266,10 +266,11 @@ formatVdeclType Constant = text "constant"
 
 formatParams :: [Vdecl] -> (Doc, Doc)
 formatParams vdecls =
-  (commasep param, templ)
+  (commasep param, templ $ concat sizenums)
   where
     (param, sizenums) = unzip $ zipWith formatParam (iterate (+ 1) 1) vdecls
-    templ = text "template <" <> commasep (map (\i -> text "std::size_t SIZE" <> integer i) (concat sizenums)) <> text ">"
+    templ []    = empty
+    templ list = text "template <" <> commasep (map (\i -> text "std::size_t SIZE" <> integer i) list) <> text ">"
     -- arraysizenames :: [Integer]
     -- arraysizenames = concatMap sizenum (zip (iterate (+ 1) 1) vdecls)
     -- sizenum :: (Integer, Vdecl) -> [Integer]
