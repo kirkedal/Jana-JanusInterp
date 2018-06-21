@@ -116,26 +116,26 @@ formatMaybeExpr (Just e) = equals <+> formatExpr e
 
 
 formatVdecl :: Vdecl -> Doc
-formatVdecl (Scalar vdtyp typ fid expr _) =
-  formatVdeclType vdtyp <+> formatType typ <+> formatIdent fid $+$ formatExp expr
+formatVdecl (Scalar dtyp typ fid expr _) =
+  formatDeclType dtyp <+> formatType typ <+> formatIdent fid $+$ formatExp expr
     where
       formatExp (Just e) = equals $+$ formatExpr e
       formatExp Nothing     = empty
-formatVdecl (Array vdtyp itype fid size a_exp _) =
-  formatVdeclType vdtyp <+> formatIntType itype <+> formatIdent fid <> vcat (map formatSize size) $+$ formatExp a_exp
+formatVdecl (Array dtyp itype fid size a_exp _) =
+  formatDeclType dtyp <+> formatIntType itype <+> formatIdent fid <> vcat (map formatSize size) $+$ formatExp a_exp
   where formatSize (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatSize Nothing  = text "[]"
         formatExp (Just ex) = equals $+$ formatExpr ex
         formatExp Nothing   = empty
 
-formatVdeclType :: VdeclType -> Doc
-formatVdeclType Variable = empty
-formatVdeclType Ancilla = text "ancilla"
-formatVdeclType Constant = text "constant"
+formatDeclType :: DeclType -> Doc
+formatDeclType Variable = empty
+formatDeclType Ancilla = text "ancilla"
+formatDeclType Constant = text "constant"
 
 formatLocalDecl :: LocalDecl -> Doc
-formatLocalDecl (LocalVar typ varId expr _)     = formatType typ <+> formatIdent varId <+> formatMaybeExpr expr
-formatLocalDecl (LocalArray it arrId iexprs expr p) = formatType (Int it p) <+> formatIdent arrId <+> vcat (map formatIndex iexprs) $+$ formatMaybeExpr expr
+formatLocalDecl (LocalVar dtyp typ varId expr _)     = formatDeclType dtyp <+> formatType typ <+> formatIdent varId <+> formatMaybeExpr expr
+formatLocalDecl (LocalArray dtyp it arrId iexprs expr p) = formatDeclType dtyp <+> formatType (Int it p) <+> formatIdent arrId <+> vcat (map formatIndex iexprs) $+$ formatMaybeExpr expr
   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
         formatIndex Nothing  = text "[]"
 

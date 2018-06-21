@@ -143,15 +143,15 @@ mainProcedure pos =
 mainvdecl :: Parser Vdecl
 mainvdecl =
   do pos    <- getPosition
-     vdtype <- vdeclType
+     dtype <- declType
      mytype <- atype
      idnt  <- identifier
      case mytype of
-       (Int itype _) -> liftM2 (\x y -> (Array vdtype itype idnt x y pos))
+       (Int itype _) -> liftM2 (\x y -> (Array dtype itype idnt x y pos))
                                         (many1 $ brackets $ optionMaybe expression)
                                         (optionMaybe $ reservedOp "=" >> array)
-              <|> liftM (\x -> (Scalar vdtype mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
-       _       -> return $ (Scalar vdtype mytype idnt Nothing pos)
+              <|> liftM (\x -> (Scalar dtype mytype idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
+       _       -> return $ (Scalar dtype mytype idnt Nothing pos)
 
 procedure :: Ident -> Parser Proc
 procedure name =
@@ -162,22 +162,23 @@ procedure name =
 vdecl :: Parser Vdecl
 vdecl =
   do pos    <- getPosition
-     vdtype <- vdeclType
+     dtype <- declType
      mytype <- atype
      idnt   <- identifier
      case mytype of
-       (Int itype _) -> liftM3 (Array vdtype itype idnt) (many1 $ brackets $ optionMaybe expression) (return Nothing) (return pos)
-              <|> return (Scalar vdtype mytype idnt Nothing pos)
-       _       -> return $ Scalar vdtype mytype idnt Nothing pos
+       (Int itype _) -> liftM3 (Array dtype itype idnt) (many1 $ brackets $ optionMaybe expression) (return Nothing) (return pos)
+              <|> return (Scalar dtype mytype idnt Nothing pos)
+       _       -> return $ Scalar dtype mytype idnt Nothing pos
 
-vdeclType :: Parser VdeclType
-vdeclType = option Variable (ancilla <|> constant)
+declType :: Parser DeclType
+declType = option Variable (ancilla <|> constant)
   where
     ancilla  = (reserved "ancilla") >> return Ancilla
     constant = (reserved "constant") >> return Constant
 
 statement :: Parser Stmt
 statement =   assignStmt
+          <|> constantStmt
           <|> ifStmt
           <|> fromStmt
           <|> iterateStmt
@@ -255,7 +256,7 @@ pushStmt =
     chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int FreshVar p) f (Just expr) p) [stmtFun f] (LocalVar (Int FreshVar p) f (Just (Number 0 p)) p) p
+         return $ Local (LocalVar Variable (Int FreshVar p) f (Just expr) p) [stmtFun f] (LocalVar Variable (Int FreshVar p) f (Just (Number 0 p)) p) p
 
 popStmt :: Parser Stmt
 popStmt =
@@ -268,7 +269,7 @@ popStmt =
     chkExpression stmtFun expr =
       do f <- getFreshVar
          p <- getPosition
-         return $ Local (LocalVar (Int FreshVar p) f (Just $ (Number 0 p)) p) [stmtFun f] (LocalVar (Int FreshVar p) f (Just expr) p) p
+         return $ Local (LocalVar Variable (Int FreshVar p) f (Just $ (Number 0 p)) p) [stmtFun f] (LocalVar Variable (Int FreshVar p) f (Just expr) p) p
 
 twoArgs :: Parser (Expr, Ident)
 twoArgs =
@@ -276,6 +277,21 @@ twoArgs =
      comma
      y <- identifier
      return (x,y)
+
+constantStmt :: Parser Stmt
+constantStmt =
+  do pos      <- getPosition
+     reserved "constant"
+     typ  <- atype
+     idnt <- identifier
+     decl <- case typ of
+       (Int itype _) -> liftM2 (\x y -> (LocalArray Constant itype idnt x y pos))
+                               (many1 $ brackets $ optionMaybe expression)
+                               (optionMaybe $ reservedOp "=" >> array)
+              <|> liftM  (\x -> (LocalVar Constant typ idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
+       _       -> liftM  (\x -> (LocalVar Constant typ idnt (Just x) pos)) (reservedOp "=" >> expression)
+     stats    <- many statement
+     return $ Local decl stats decl pos
 
 localStmt :: Parser Stmt
 localStmt =
@@ -294,11 +310,11 @@ localStmt =
            typ  <- atype
            idnt <- identifier
            case typ of
-             (Int itype _) -> liftM2 (\x y -> (LocalArray itype idnt x y pos))
+             (Int itype _) -> liftM2 (\x y -> (LocalArray Variable itype idnt x y pos))
                                      (many1 $ brackets $ optionMaybe expression)
                                      (optionMaybe $ reservedOp "=" >> array)
-                    <|> liftM  (\x -> (LocalVar typ idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
-             _       -> liftM  (\x -> (LocalVar typ idnt (Just x) pos)) (reservedOp "=" >> expression)
+                    <|> liftM  (\x -> (LocalVar Variable typ idnt x pos)) (optionMaybe $ reservedOp "=" >> expression)
+             _       -> liftM  (\x -> (LocalVar Variable typ idnt (Just x) pos)) (reservedOp "=" >> expression)
 
 
 atype :: Parser Type

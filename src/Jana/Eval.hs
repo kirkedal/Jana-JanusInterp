@@ -464,13 +464,13 @@ evalStmt (From e1 s1 s2 e2 _) =
                          whenBackwardExecution (evalStmts s2))
 evalStmt (Iterate typ idnt startE stepE endE stmts pos) =
   evalStmt (Local
-    (LocalVar typ idnt (Just startE) pos)
+    (LocalVar Variable typ idnt (Just startE) pos)
     [From
       (BinOp EQ (LV (Var idnt) pos) startE)
       []
       (stmts++[Assign AddEq (Var idnt) stepE pos])
       (BinOp EQ (LV (Var idnt) pos) (BinOp Add endE stepE)) pos]
-    (LocalVar typ idnt (Just (BinOp Add endE stepE)) pos) pos)
+    (LocalVar Variable typ idnt (Just (BinOp Add endE stepE)) pos) pos)
 evalStmt (Push idnt1 idnt2 pos) =
   do headval <- getVar idnt1
      stkhead <- unpackInt pos (valueToIntType headval) headval
@@ -492,16 +492,18 @@ evalStmt (Local assign1 stmts assign2 _) =
      evalStmts stmts
      whenForwardExecutionElse (assertLocalBinding assign2) (assertLocalBinding assign1)
   where
-    checkIdentAndType (LocalVar typ1 id1 _ _) (LocalVar typ2 id2 _ pos) =
+    checkIdentAndType (LocalVar dtype1 typ1 id1 _ _) (LocalVar dtype2 typ2 id2 _ pos) =
       do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
          unless (typ1 == typ2) $ pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
-    checkIdentAndType (LocalArray typ1 id1 _ _ pos) (LocalArray typ2 id2 _ _ _) =
+         unless (dtype1 == dtype2) $ pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
+    checkIdentAndType (LocalArray dtype1 typ1 id1 _ _ pos) (LocalArray dtype2 typ2 id2 _ _ _) =
       do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
          unless (typ1 == typ2) $ pos <!!> delocalNameMismatch id1 id2
-    checkIdentAndType (LocalArray _ id1 _ _ pos) (LocalVar typ id2 _ _) =
+         unless (dtype1 == dtype2) $ pos <!!> delocalTypeMismatch id1 (show typ1) (show typ2)
+    checkIdentAndType (LocalArray _ _ id1 _ _ pos) (LocalVar _ typ id2 _ _) =
       do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
          pos <!!> delocalTypeMismatch id1 "Array" (show typ)
-    checkIdentAndType (LocalVar typ id2 _ _) (LocalArray _ id1 _ _ pos) =
+    checkIdentAndType (LocalVar _ typ id2 _ _) (LocalArray _ _ id1 _ _ pos) =
       do unless (id1 == id2)   $ pos <!!> delocalNameMismatch id1 id2
          pos <!!> delocalTypeMismatch id1 "Array" (show typ)
 
@@ -560,27 +562,29 @@ evalStmt (Assert e _) = assertTrue e
 
 createLocalBinding :: LocalDecl -> Eval ()
 -- createLocalBinding decl | trace ("createLocalBinding " ++ show decl) False = undefined
-createLocalBinding (LocalVar typ@(Int itype _) idnt expr _) =
+createLocalBinding (LocalVar dtype typ@(Int itype _) idnt expr _) =
   do val <- evalModularExpr itype (fromMaybeExpr typ expr)
      checkType typ val
-     bindVar Variable idnt val
-createLocalBinding (LocalArray itype idnt size expr pos) =
+     bindVar dtype idnt val
+createLocalBinding (LocalArray dtype itype idnt size expr pos) =
   do sizeInt <- evalSize pos size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
      exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
      vals  <- mapM (evalModularExpr itype) exprs
      valsI <- mapM (checkTypeInt pos) vals
-     bindVar Variable idnt $ JArray sizeInt valsI
+     bindVar dtype idnt $ JArray sizeInt valsI
 createLocalBinding _ = undefined "No created bindings on stacks and arrays"
 
 assertLocalBinding :: LocalDecl -> Eval ()
 -- assertLocalBinding decl | trace ("assertLocalBinding " ++ show decl) False = undefined
-assertLocalBinding (LocalVar typ@(Int itype _) idnt expr pos) =
+assertLocalBinding (LocalVar Constant _ _ _ _) = return ()
+assertLocalBinding (LocalVar _ typ@(Int itype _) idnt expr pos) =
   do val <- evalModularAliasExpr itype (Just $ Var idnt) (fromMaybeExpr typ expr)
      val' <- getVar idnt
      unless (val == val') $
        pos <!!> wrongDelocalValue idnt (show val) (show val')
      unbindVar idnt
-assertLocalBinding (LocalArray itype idnt size expr pos) =
+assertLocalBinding (LocalArray Constant _ _ _ _ _) = return ()
+assertLocalBinding (LocalArray _ itype idnt size expr pos) =
   do sizeInt <- evalAliasSize pos (Just (Var idnt)) size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
      exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
      vals  <- mapM (evalModularAliasExpr itype (Just $ Var idnt)) exprs
@@ -628,7 +632,7 @@ setupProcCall procedure args_expr =
     chkExpression _ = undefined "Wrong function call"
 
     makelocal :: (Ident, IntType, Expr) -> LocalDecl
-    makelocal (idnt@(Ident _ pos), it, expr) = LocalVar (Int it pos) idnt (Just expr) pos
+    makelocal (idnt@(Ident _ pos), it, expr) = LocalVar Variable (Int it pos) idnt (Just expr) pos
     freshExpr pos _ =
       do f <- getFreshVar pos
          return f

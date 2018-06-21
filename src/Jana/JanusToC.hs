@@ -111,7 +111,7 @@ formatExpr = f 0
     f _ (LV lval _)         = formatLval lval
     f _ (Empty _ _)         = error "empty: Not supported in C++ translation"
     f _ (Top _ _)           = error "top: Not supported in C++ translation"
-    f _ (Size idnt _)       = text "max_size" <> (parens $ formatIdent Value idnt)
+    f _ (Size idnt _)       = parens $ (formatIdent Value idnt <> text ".size()")
     f _ (ArrayE es _)       = braces $ hcat (intersperse (text ", ") (map formatExpr es))
     f _ (Nil _)             = error "nil: Not supported in C++ translation"
     f d (TypeCast typ expr) = parens' (d > 6) ((parens (formatType typ)) <+> f 6 expr)
@@ -128,13 +128,15 @@ formatExpr = f 0
     parens' bool = if bool then parens else id
 
 formatLocalDecl :: LocalDecl -> Doc
-formatLocalDecl (LocalVar typ idnt expr p)     = formatVdecl (Scalar Variable typ idnt expr p)
-formatLocalDecl (LocalArray ityp idnt iexprs expr p) = formatVdecl (Array Variable ityp idnt iexprs expr p)
+formatLocalDecl (LocalVar Constant typ idnt expr p)    = text "const" <+> formatVdecl (Scalar Variable typ idnt expr p)
+formatLocalDecl (LocalVar dtype typ idnt expr p)       = formatVdecl (Scalar Variable typ idnt expr p)
+formatLocalDecl (LocalArray _ ityp idnt iexprs expr p) = formatVdecl (Array Variable ityp idnt iexprs expr p)
 
 formatAssertLocalDecl :: LocalDecl -> Doc
-formatAssertLocalDecl (LocalVar tp idnt Nothing p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
-formatAssertLocalDecl (LocalVar _ idnt (Just expr) p) = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
-formatAssertLocalDecl (LocalArray _ _ _ _ _) = empty -- not implemented
+formatAssertLocalDecl (LocalVar Constant tp idnt Nothing p) = empty
+formatAssertLocalDecl (LocalVar _ tp idnt Nothing p)        = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
+formatAssertLocalDecl (LocalVar _ _ idnt (Just expr) p)     = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
+formatAssertLocalDecl (LocalArray _ _ _ _ _ _)              = empty -- not implemented
 -- formatAssertLocalDecl (LocalArray intTp idnt sizes expr p) = formatType (Int it p) <+> formatIdent arrId <+> vcat (map formatIndex iexprs)
 -- $+$ formatMaybeExpr expr
 --   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
@@ -209,8 +211,8 @@ formatMain (ProcMain vdecls mainbody p) =
       text "return 1;")
 
 formatVdecl :: Vdecl -> Doc
-formatVdecl (Scalar vdtyp typ idnt expr _) =
-  formatVdeclType vdtyp <+> formatType typ <+> formatIdent Value idnt <+> formatExp expr <> semi
+formatVdecl (Scalar vtyp typ idnt expr _) =
+  formatDeclType vtyp <+> formatType typ <+> formatIdent Value idnt <+> formatExp expr <> semi
   where
     formatExp (Just e) = equals <+> formatExpr e
     formatExp Nothing  = equals <+> integer 0
@@ -248,22 +250,32 @@ formatProc proc =
 
 
 formatParam :: Integer -> Vdecl -> (Doc, [Integer])
-formatParam _ (Scalar vdtyp typ idnt expr _) =
-  (formatVdeclType vdtyp <+> formatType typ <+> formatIdent Reference idnt <> formatExp expr, [])
+formatParam _ (Scalar Variable typ idnt expr _) =
+  (formatType typ <+> formatIdent Reference idnt <> formatExp expr, [])
+    where
+      formatExp (Just e) = equals $+$ formatExpr e
+      formatExp Nothing  = empty
+formatParam _ (Scalar Constant typ idnt expr _) =
+  (text "const" <+> formatType typ <+> formatIdent Value idnt <> formatExp expr, [])
+    where
+      formatExp (Just e) = equals $+$ formatExpr e
+      formatExp Nothing  = empty
+formatParam _ (Scalar Ancilla typ idnt expr _) =
+  (formatType typ <+> formatIdent Value idnt <> formatExp expr, [])
     where
       formatExp (Just e) = equals $+$ formatExpr e
       formatExp Nothing  = empty
 formatParam num (Array _ itype idnt size a_exp p) =
   (text "std::array<" <> formatType (Int itype p) <> comma <+> text "SIZE" <> integer num <>text ">" <+> formatIdent Reference idnt, [num])
-  -- formatVdeclType vdtyp <+> formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
+  -- formatDeclType vtyp <+> formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
       formatExp Nothing     = empty
 
-formatVdeclType :: VdeclType -> Doc
-formatVdeclType Variable = empty
-formatVdeclType Ancilla = text "ancilla"
-formatVdeclType Constant = text "constant"
+formatDeclType :: DeclType -> Doc
+formatDeclType Variable = empty
+formatDeclType Ancilla = empty
+formatDeclType Constant = text "const"
 
 formatParams :: [Vdecl] -> (Doc, Doc)
 formatParams vdecls =

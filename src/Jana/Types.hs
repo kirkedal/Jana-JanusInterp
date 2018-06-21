@@ -499,13 +499,13 @@ indexValue (i:is) (JArray (idx:idxs) array) | i < idx =
 indexValue _ _ = undefined "Indexing non-array value"
 
 -- Bind a variable name to a new reference
-bindVar :: VdeclType -> Ident -> Value -> Eval ()
-bindVar vdType (Ident name pos) val =
+bindVar :: DeclType -> Ident -> Value -> Eval ()
+bindVar dType (Ident name pos) val =
   do evalS <- get
      let storeEnv = store evalS
      ref <- liftIO $ newIORef val
      case Map.lookup name storeEnv of
-       Nothing  -> put $ evalS {store = Map.insert name (ref, [], entType vdType) storeEnv}
+       Nothing  -> put $ evalS {store = Map.insert name (ref, [], entType dType) storeEnv}
        Just _   -> pos <!!> alreadyBound name
   where 
     entType Constant = Static

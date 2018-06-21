@@ -118,8 +118,8 @@ data Argument
 
 -- Local Declaration
 data LocalDecl
-    = LocalVar Type Ident (Maybe Expr) SourcePos
-    | LocalArray IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
+    = LocalVar DeclType Type Ident (Maybe Expr) SourcePos
+    | LocalArray DeclType IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
     deriving (Eq)
 
 -- Expression
@@ -139,11 +139,11 @@ data Expr
 
 -- Declaration
 data Vdecl
-    = Scalar VdeclType Type Ident (Maybe Expr) SourcePos
-    | Array  VdeclType IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
+    = Scalar DeclType Type Ident (Maybe Expr) SourcePos
+    | Array  DeclType IntType Ident [Maybe Expr] (Maybe Expr) SourcePos
     deriving (Eq)
 
-data VdeclType
+data DeclType
     = Variable
     | Ancilla
     | Constant
