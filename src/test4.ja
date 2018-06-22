@@ -1,0 +1,13 @@
+procedure main()
+    u32 k = 2
+
+  iterate u32 i = 1 to 3
+    printf("loop1")
+  end
+
+  from k = 2 loop
+    local u32 l = (int) k
+    printf("loop2: %d", l)
+    delocal u32 l = (int) k
+    k += 1
+  until k > 6

@@ -1,0 +1,496 @@
+// Generated program containers
+// Memory characteristics: max object size = 6, max stack depth = 10
+procedure dispatch_addTo(int heap[][],int heap_counter,int this,int var_position,int var_element)
+  if heap[this][0]=4 then
+    call List_addTo(heap,heap_counter,this,var_position,var_element)
+  else
+    if heap[this][0]=7 then
+      call ArrayList_addTo(heap,heap_counter,this,var_position,var_element)
+    else
+      local int class_id = heap[this][0]
+      printf("Error when dispatching method addTo to this=%d, class=%d, List=4 ArrayList=7 ",this,class_id)
+      delocal int class_id = heap[this][0]
+      error("Method not found")
+    fi heap[this][0]=7
+  fi heap[this][0]=4
+procedure dispatch_finalize(int heap[][],int heap_counter,int this)
+  if heap[this][0]=1 then
+    call Iterator_finalize(heap,heap_counter,this)
+  else
+    if heap[this][0]=6 then
+      call StackIterator_finalize(heap,heap_counter,this)
+    else
+      if heap[this][0]=8 then
+        call ArrayListIterator_finalize(heap,heap_counter,this)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method finalize to this=%d, class=%d, Iterator=1 StackIterator=6 ArrayListIterator=8 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=8
+    fi heap[this][0]=6
+  fi heap[this][0]=1
+procedure dispatch_consume(int heap[][],int heap_counter,int this,int var_element)
+  if heap[this][0]=3 then
+    call Collection_consume(heap,heap_counter,this,var_element)
+  else
+    if heap[this][0]=5 then
+      call Stack_consume(heap,heap_counter,this,var_element)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_consume(heap,heap_counter,this,var_element)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method consume to this=%d, class=%d, Collection=3 Stack=5 ArrayList=7 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=3
+procedure dispatch_addFrom(int heap[][],int heap_counter,int this,int var_position,int var_value)
+  if heap[this][0]=4 then
+    call List_addFrom(heap,heap_counter,this,var_position,var_value)
+  else
+    if heap[this][0]=5 then
+      call Stack_addFrom(heap,heap_counter,this,var_position,var_value)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_addFrom(heap,heap_counter,this,var_position,var_value)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method addFrom to this=%d, class=%d, List=4 Stack=5 ArrayList=7 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=4
+procedure dispatch_addAtEnd(int heap[][],int heap_counter,int this,int var_element)
+  if heap[this][0]=3 then
+    call Collection_addAtEnd(heap,heap_counter,this,var_element)
+  else
+    if heap[this][0]=5 then
+      call Stack_addAtEnd(heap,heap_counter,this,var_element)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_addAtEnd(heap,heap_counter,this,var_element)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method addAtEnd to this=%d, class=%d, Collection=3 Stack=5 ArrayList=7 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=3
+procedure dispatch_move_n_elements(int heap[][],int heap_counter,int this,int var_src,int var_dst,int var_n)
+  if heap[this][0]=9 then
+    call Library_move_n_elements(heap,heap_counter,this,var_src,var_dst,var_n)
+  else
+    local int class_id = heap[this][0]
+    printf("Error when dispatching method move_n_elements to this=%d, class=%d, Library=9 ",this,class_id)
+    delocal int class_id = heap[this][0]
+    error("Method not found")
+  fi heap[this][0]=9
+procedure dispatch_remove(int heap[][],int heap_counter,int this,int var_value)
+  if heap[this][0]=3 then
+    call Collection_remove(heap,heap_counter,this,var_value)
+  else
+    if heap[this][0]=5 then
+      call Stack_remove(heap,heap_counter,this,var_value)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_remove(heap,heap_counter,this,var_value)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method remove to this=%d, class=%d, Collection=3 Stack=5 ArrayList=7 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=3
+procedure dispatch_toNext(int heap[][],int heap_counter,int this,int var_value,int var_flag)
+  if heap[this][0]=1 then
+    call Iterator_toNext(heap,heap_counter,this,var_value,var_flag)
+  else
+    if heap[this][0]=6 then
+      call StackIterator_toNext(heap,heap_counter,this,var_value,var_flag)
+    else
+      if heap[this][0]=8 then
+        call ArrayListIterator_toNext(heap,heap_counter,this,var_value,var_flag)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method toNext to this=%d, class=%d, Iterator=1 StackIterator=6 ArrayListIterator=8 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=8
+    fi heap[this][0]=6
+  fi heap[this][0]=1
+procedure dispatch_iterator(int heap[][],int heap_counter,int this,int var_object)
+  if heap[this][0]=2 then
+    call Iterable_iterator(heap,heap_counter,this,var_object)
+  else
+    if heap[this][0]=5 then
+      call Stack_iterator(heap,heap_counter,this,var_object)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_iterator(heap,heap_counter,this,var_object)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method iterator to this=%d, class=%d, Iterable=2 Stack=5 ArrayList=7 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=2
+procedure dispatch_copy_all_elements(int heap[][],int heap_counter,int this,int var_src,int var_dst)
+  if heap[this][0]=9 then
+    call Library_copy_all_elements(heap,heap_counter,this,var_src,var_dst)
+  else
+    local int class_id = heap[this][0]
+    printf("Error when dispatching method copy_all_elements to this=%d, class=%d, Library=9 ",this,class_id)
+    delocal int class_id = heap[this][0]
+    error("Method not found")
+  fi heap[this][0]=9
+procedure dispatch_size(int heap[][],int heap_counter,int this,int var_value)
+  if heap[this][0]=3 then
+    call Collection_size(heap,heap_counter,this,var_value)
+  else
+    if heap[this][0]=5 then
+      call Stack_size(heap,heap_counter,this,var_value)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_size(heap,heap_counter,this,var_value)
+      else
+        local int class_id = heap[this][0]
+        printf("Error when dispatching method size to this=%d, class=%d, Collection=3 Stack=5 ArrayList=7 ",this,class_id)
+        delocal int class_id = heap[this][0]
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=3
+procedure constructor_Iterator(int heap[][],int heap_counter,int this)
+  heap[this][0] += 1
+procedure constructor_Iterable(int heap[][],int heap_counter,int this)
+  heap[this][0] += 2
+procedure constructor_Collection(int heap[][],int heap_counter,int this)
+  heap[this][0] += 3
+procedure constructor_List(int heap[][],int heap_counter,int this)
+  heap[this][0] += 4
+procedure constructor_Stack(int heap[][],int heap_counter,int this,int var__size)
+  local int this_check = 0
+  heap[this][0] += 5
+  heap[this][3] += var__size
+  heap[this][1] += 0
+  
+  heap[this][1] += heap_counter
+  heap_counter += 1 // array pseudo allocation
+  this_check += heap[this][0]
+  delocal int this_check = 5
+procedure Stack_consume(int heap[][],int heap_counter,int this,int var_element)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][2]<heap[this][3] then
+    heap[heap[this][1]][1+heap[this][2]] <=> var_element
+    heap[this][2] += 1
+  else
+    error("stack overflow")
+  fi heap[this][2]<=heap[this][3]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Stack_addAtEnd(int heap[][],int heap_counter,int this,int var_element)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][2]<heap[this][3] then
+    local int var_tl = heap[this][2]
+    local int var_te = heap[this][1]
+    heap[var_te][1+var_tl] += var_element
+    heap[this][2] += 1
+    delocal int var_te = heap[this][1]
+    delocal int var_tl = heap[this][2]-1
+  else
+    error("stack overflow")
+  fi heap[this][2]<=heap[this][3]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Stack_remove(int heap[][],int heap_counter,int this,int var_value)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][2]>0 then
+    heap[this][2] -= 1
+    var_value += heap[heap[this][1]][1+heap[this][2]]
+    heap[heap[this][1]][1+heap[this][2]] -= var_value
+  else
+    error("stack underflow")
+  fi heap[this][2]>=0
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Stack_addFrom(int heap[][],int heap_counter,int this,int var_position,int var_value)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  var_value += heap[heap[this][1]][1+var_position]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Stack_size(int heap[][],int heap_counter,int this,int var_value)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  var_value += heap[this][2]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Stack_iterator(int heap[][],int heap_counter,int this,int var_object)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  var_object += 0
+  
+  // Abstract parameter object initialization
+  call constructor_StackIterator(heap,heap_counter,var_object,this)
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure constructor_StackIterator(int heap[][],int heap_counter,int this,int var__stack)
+  local int this_check = 0
+  heap[this][0] += 6
+  local int var_m = 0
+  call dispatch_size(heap,heap_counter,var__stack,var_m)
+  heap[this][2] += var_m
+  heap[this][3] += var__stack
+  delocal int var_m = heap[this][2]
+  this_check += heap[this][0]
+  delocal int this_check = 6
+procedure StackIterator_finalize(int heap[][],int heap_counter,int this)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  heap[this][1] -= heap[this][2]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure StackIterator_toNext(int heap[][],int heap_counter,int this,int var_value,int var_flag)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][1]=0 then
+    var_flag += 1
+  else
+    var_flag += 0
+  fi heap[this][1]=0
+  if heap[this][1]<heap[this][2] then
+    local int var_st = heap[this][3]
+    call dispatch_addFrom(heap,heap_counter,var_st,heap[this][1],var_value)
+    delocal int var_st = heap[this][3]
+  else
+    var_flag += 1
+  fi heap[this][1]>=0
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure constructor_ArrayList(int heap[][],int heap_counter,int this,int var__size)
+  local int this_check = 0
+  heap[this][0] += 7
+  heap[this][3] += var__size
+  heap[this][1] += 0
+  
+  heap[this][1] += heap_counter
+  heap_counter += 1 // array pseudo allocation
+  this_check += heap[this][0]
+  delocal int this_check = 7
+procedure ArrayList_addAtEnd(int heap[][],int heap_counter,int this,int var_element)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][2]<heap[this][3] then
+    local int var_tl = heap[this][2]
+    local int var_te = heap[this][1]
+    heap[var_te][1+var_tl] += var_element
+    heap[this][2] += 1
+    delocal int var_te = heap[this][1]
+    delocal int var_tl = heap[this][2]-1
+  else
+    error("stack overflow")
+  fi heap[this][2]<=heap[this][3]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure ArrayList_addTo(int heap[][],int heap_counter,int this,int var_position,int var_element)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  heap[heap[this][1]][1+var_position] += var_element
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure ArrayList_addFrom(int heap[][],int heap_counter,int this,int var_position,int var_value)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  var_value += heap[heap[this][1]][1+var_position]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure ArrayList_consume(int heap[][],int heap_counter,int this,int var_element)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][2]<heap[this][3] then
+    var_element <=> heap[heap[this][1]][1+heap[this][2]]
+    heap[this][2] += 1
+  else
+    error("ArrayList overflow")
+  fi heap[this][2]<=heap[this][3]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure ArrayList_remove(int heap[][],int heap_counter,int this,int var_value)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][2]>0 then
+    heap[this][2] -= 1
+    var_value += heap[heap[this][1]][1+heap[this][2]]
+    heap[heap[this][1]][1+heap[this][2]] -= var_value
+  else
+    error("ArrayList underflow")
+  fi heap[this][2]>=0
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure ArrayList_size(int heap[][],int heap_counter,int this,int var_value)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  var_value += heap[this][2]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure ArrayList_iterator(int heap[][],int heap_counter,int this,int var_object)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  var_object += 0
+  
+  // Abstract parameter object initialization
+  call constructor_ArrayListIterator(heap,heap_counter,var_object,this)
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure constructor_ArrayListIterator(int heap[][],int heap_counter,int this,int var__list)
+  local int this_check = 0
+  heap[this][0] += 8
+  local int var_m = 0
+  call dispatch_size(heap,heap_counter,var__list,var_m)
+  heap[this][2] += var_m
+  heap[this][3] += var__list
+  delocal int var_m = heap[this][2]
+  this_check += heap[this][0]
+  delocal int this_check = 8
+procedure ArrayListIterator_finalize(int heap[][],int heap_counter,int this)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  heap[this][1] -= heap[this][2]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure ArrayListIterator_toNext(int heap[][],int heap_counter,int this,int var_value,int var_flag)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][1]=0 then
+    var_flag += 1
+  else
+    var_flag += 0
+  fi heap[this][1]=0
+  if heap[this][1]<heap[this][2] then
+    local int var_ls = heap[this][3]
+    call dispatch_addFrom(heap,heap_counter,var_ls,heap[this][1],var_value)
+    delocal int var_ls = heap[this][3]
+  else
+    var_flag += 1
+  fi heap[this][1]>=0
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure constructor_Library(int heap[][],int heap_counter,int this)
+  heap[this][0] += 9
+procedure Library_move_n_elements(int heap[][],int heap_counter,int this,int var_src,int var_dst,int var_n)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  local int var_m = 0
+  from var_m=0 loop
+    local int var_x = 0
+    call dispatch_remove(heap,heap_counter,var_src,var_x)
+    call dispatch_addFrom(heap,heap_counter,var_dst,var_x)
+    var_m += 1
+    delocal int var_x = 0
+  until var_m=var_n
+  delocal int var_m = var_n
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Library_copy_all_elements(int heap[][],int heap_counter,int this,int var_src,int var_dst)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  local int var_flag = 0
+  local int var_value = 0
+  local int var_i = 0
+  var_i += heap_counter
+  heap_counter += 1 // abstract object preallocation
+  call dispatch_iterator(heap,heap_counter,var_src,var_i)
+  call dispatch_toNext(heap,heap_counter,var_i,var_value,var_flag)
+  from var_flag=0 loop
+    call dispatch_addAtEnd(heap,heap_counter,var_dst,var_value)
+    call dispatch_toNext(heap,heap_counter,var_i,var_value,var_flag)
+  until var_flag=1
+  call dispatch_finalize(heap,heap_counter,var_i)
+  uncall dispatch_iterator(heap,heap_counter,var_src,var_i)
+  heap_counter -= 1
+  delocal int var_i = heap_counter
+  delocal int var_value = 0
+  delocal int var_flag = 1
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure main()
+  int heap[10][6]
+  int heap_counter = 1 // 0 represents a null value
+  int var_x = 0
+  int var_y = 0
+  int var_lib = 0
+  var_x += heap_counter
+  heap_counter += 1 // object pseudo allocation
+  call constructor_Stack(heap,heap_counter,var_x,5)
+  var_y += heap_counter
+  heap_counter += 1 // object pseudo allocation
+  call constructor_ArrayList(heap,heap_counter,var_y,6)
+  var_lib += heap_counter
+  heap_counter += 1 // object pseudo allocation
+  call constructor_Library(heap,heap_counter,var_lib)
+  call dispatch_addAtEnd(heap,heap_counter,var_x,1)
+  call dispatch_addAtEnd(heap,heap_counter,var_x,2)
+  call dispatch_addAtEnd(heap,heap_counter,var_x,4)
+  call dispatch_addAtEnd(heap,heap_counter,var_x,8)
+  call dispatch_addAtEnd(heap,heap_counter,var_x,16)
+  call dispatch_copy_all_elements(heap,heap_counter,var_lib,var_x,var_y)
+  uncall constructor_Stack(heap,heap_counter,var_x)
+  heap_counter -= 1
+  var_x -= heap_counter
+  if var_x != 0 then
+    error("Reference not zeroed after object deallocation")
+  fi var_x != 0
+  uncall constructor_Library(heap,heap_counter,var_lib)
+  heap_counter -= 1
+  var_lib -= heap_counter
+  if var_lib != 0 then
+    error("Reference not zeroed after object deallocation")
+  fi var_lib != 0

@@ -1,0 +1,81 @@
+// Generated program abstractobj
+// Memory characteristics: max object size = 1, max stack depth = 10
+procedure dispatch_populate(int heap[][],int heap_counter,int this,int var_object)
+  if heap[this][0]=4 then
+    call AnimalFactory_populate(heap,heap_counter,this,var_object)
+  else
+    error("Method not found")
+  fi heap[this][0]=4
+procedure dispatch_m(int heap[][],int heap_counter,int this)
+  if heap[this][0]=5 then
+    call Main_m(heap,heap_counter,this)
+  else
+    error("Method not found")
+  fi heap[this][0]=5
+procedure dispatch_sound(int heap[][],int heap_counter,int this)
+  if heap[this][0]=2 then
+    call Duck_sound(heap,heap_counter,this)
+  else
+    if heap[this][0]=1 then
+      call Animal_sound(heap,heap_counter,this)
+    else
+      if heap[this][0]=3 then
+        call Dog_sound(heap,heap_counter,this)
+      else
+        error("Method not found")
+      fi heap[this][0]=3
+    fi heap[this][0]=1
+  fi heap[this][0]=2
+procedure constructor_Animal(int heap[][],int heap_counter,int this)
+  heap[this][0] += 1
+procedure constructor_Duck(int heap[][],int heap_counter,int this)
+  heap[this][0] += 2
+procedure Duck_sound(int heap[][],int heap_counter,int this)
+  printf("quack!\\n")
+procedure constructor_Dog(int heap[][],int heap_counter,int this)
+  heap[this][0] += 3
+procedure Dog_sound(int heap[][],int heap_counter,int this)
+  printf("woof!\\n")
+procedure constructor_AnimalFactory(int heap[][],int heap_counter,int this)
+  heap[this][0] += 4
+procedure AnimalFactory_populate(int heap[][],int heap_counter,int this,int var_object)
+  var_object += 0
+  
+  // Abstract parameter object initialization
+  call constructor_Duck(heap,heap_counter,var_object)
+procedure constructor_Main(int heap[][],int heap_counter,int this)
+  heap[this][0] += 5
+procedure Main_m(int heap[][],int heap_counter,int this)
+  local int var_farm = 0
+  local int var_animal = 0
+  var_farm += heap_counter
+  call constructor_AnimalFactory(heap,heap_counter,heap_counter)
+  heap_counter += 1 // object pseudo allocation
+  var_animal += heap_counter
+  heap_counter += 1 // abstract object preallocation
+  call dispatch_populate(heap,heap_counter,var_farm,var_animal)
+  call dispatch_sound(heap,heap_counter,var_animal)
+  uncall dispatch_populate(heap,heap_counter,var_farm,var_animal)
+  heap_counter -= 1
+  delocal int var_animal = heap_counter
+  uncall constructor_AnimalFactory(heap,heap_counter,var_farm)
+  heap_counter -= 1
+  delocal int var_farm = heap_counter
+procedure main()
+  int heap[10][1]
+  int heap_counter = 1 // 0 represents a null value
+  int var_farm = 0
+  int var_animal = 0
+  int var_ma = 0
+  var_farm += heap_counter
+  call constructor_AnimalFactory(heap,heap_counter,heap_counter)
+  heap_counter += 1 // object pseudo allocation
+  var_animal += heap_counter
+  heap_counter += 1 // abstract object preallocation
+  var_ma += heap_counter
+  call constructor_Main(heap,heap_counter,heap_counter)
+  heap_counter += 1 // object pseudo allocation
+  call dispatch_populate(heap,heap_counter,var_farm,var_animal)
+  call dispatch_sound(heap,heap_counter,var_animal)
+  uncall dispatch_populate(heap,heap_counter,var_farm,var_animal)
+  call dispatch_m(heap,heap_counter,var_ma)

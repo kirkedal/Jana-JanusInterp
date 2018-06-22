@@ -1,0 +1,37 @@
+//procedure test_rev(int x[])
+procedure test_rev(int x[], int y)
+    x[0] += y
+
+
+procedure test_types()
+    local u32 test = (3)
+    test += 0b000001
+    delocal u32 test = 4
+
+
+procedure test1(u8 x, u8 y)
+    x += 16 - y
+
+procedure main()
+    int test_int = 0
+    int test_int2
+    int test_array[2][2] = {{42, 17}, {1,2}}
+    constant u8 x = -1
+    u16 y = 0
+
+    u32 test2 = 0xFFFF0000
+    u32 test3 = 0
+    int r = 8
+
+    u8 w = 250
+    call test1(w, x)
+
+    test3 += test2 << (r + 1)
+
+    y ^= (u16) x
+
+    call test_rev(test_array[0], test_array[1][0])
+
+  //  test_int2 += ~test_int
+
+    call test_types()

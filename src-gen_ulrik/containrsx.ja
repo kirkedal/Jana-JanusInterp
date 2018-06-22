@@ -1,0 +1,271 @@
+// Generated program containers
+// Memory characteristics: max object size = 6, max stack depth = 10
+procedure dispatch_consume(int heap[][],int heap_counter,int this,int var_element)
+  if heap[this][0]=5 then
+    call Stack_consume(heap,heap_counter,this,var_element)
+  else
+    if heap[this][0]=7 then
+      call ArrayList_consume(heap,heap_counter,this,var_element)
+    else
+      if heap[this][0]=3 then
+        call Collection_consume(heap,heap_counter,this,var_element)
+      else
+        error("Method not found")
+      fi heap[this][0]=3
+    fi heap[this][0]=7
+  fi heap[this][0]=5
+procedure dispatch_addTo(int heap[][],int heap_counter,int this,int var_position,int var_element)
+  if heap[this][0]=4 then
+    call List_addTo(heap,heap_counter,this,var_position,var_element)
+  else
+    if heap[this][0]=7 then
+      call ArrayList_addTo(heap,heap_counter,this,var_position,var_element)
+    else
+      error("Method not found")
+    fi heap[this][0]=7
+  fi heap[this][0]=4
+procedure dispatch_addFrom(int heap[][],int heap_counter,int this,int var_position,int var_value)
+  if heap[this][0]=4 then
+    call List_addFrom(heap,heap_counter,this,var_position,var_value)
+  else
+    if heap[this][0]=5 then
+      call Stack_addFrom(heap,heap_counter,this,var_position,var_value)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_addFrom(heap,heap_counter,this,var_position,var_value)
+      else
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=4
+procedure dispatch_iterator(int heap[][],int heap_counter,int this,int var_object)
+  if heap[this][0]=2 then
+    call Iterable_iterator(heap,heap_counter,this,var_object)
+  else
+    if heap[this][0]=5 then
+      call Stack_iterator(heap,heap_counter,this,var_object)
+    else
+      if heap[this][0]=7 then
+        call ArrayList_iterator(heap,heap_counter,this,var_object)
+      else
+        error("Method not found")
+      fi heap[this][0]=7
+    fi heap[this][0]=5
+  fi heap[this][0]=2
+procedure dispatch_move_n_elements(int heap[][],int heap_counter,int this,int var_src,int var_dst,int var_n)
+  if heap[this][0]=9 then
+    call Library_move_n_elements(heap,heap_counter,this,var_src,var_dst,var_n)
+  else
+    error("Method not found")
+  fi heap[this][0]=9
+procedure dispatch_remove(int heap[][],int heap_counter,int this,int var_value)
+  if heap[this][0]=5 then
+    call Stack_remove(heap,heap_counter,this,var_value)
+  else
+    if heap[this][0]=7 then
+      call ArrayList_remove(heap,heap_counter,this,var_value)
+    else
+      if heap[this][0]=3 then
+        call Collection_remove(heap,heap_counter,this,var_value)
+      else
+        error("Method not found")
+      fi heap[this][0]=3
+    fi heap[this][0]=7
+  fi heap[this][0]=5
+procedure dispatch_finalize(int heap[][],int heap_counter,int this)
+  if heap[this][0]=1 then
+    call Iterator_finalize(heap,heap_counter,this)
+  else
+    if heap[this][0]=6 then
+      call StackIterator_finalize(heap,heap_counter,this)
+    else
+      if heap[this][0]=8 then
+        call ArrayListIterator_finalize(heap,heap_counter,this)
+      else
+        error("Method not found")
+      fi heap[this][0]=8
+    fi heap[this][0]=6
+  fi heap[this][0]=1
+procedure dispatch_size(int heap[][],int heap_counter,int this,int var_value)
+  if heap[this][0]=5 then
+    call Stack_size(heap,heap_counter,this,var_value)
+  else
+    if heap[this][0]=7 then
+      call ArrayList_size(heap,heap_counter,this,var_value)
+    else
+      if heap[this][0]=3 then
+        call Collection_size(heap,heap_counter,this,var_value)
+      else
+        error("Method not found")
+      fi heap[this][0]=3
+    fi heap[this][0]=7
+  fi heap[this][0]=5
+procedure dispatch_toNext(int heap[][],int heap_counter,int this,int var_value,int var_flag)
+  if heap[this][0]=1 then
+    call Iterator_toNext(heap,heap_counter,this,var_value,var_flag)
+  else
+    if heap[this][0]=6 then
+      call StackIterator_toNext(heap,heap_counter,this,var_value,var_flag)
+    else
+      if heap[this][0]=8 then
+        call ArrayListIterator_toNext(heap,heap_counter,this,var_value,var_flag)
+      else
+        error("Method not found")
+      fi heap[this][0]=8
+    fi heap[this][0]=6
+  fi heap[this][0]=1
+procedure dispatch_copy_all_elements(int heap[][],int heap_counter,int this,int var_src,int var_dst)
+  if heap[this][0]=9 then
+    call Library_copy_all_elements(heap,heap_counter,this,var_src,var_dst)
+  else
+    error("Method not found")
+  fi heap[this][0]=9
+procedure constructor_Iterator(int heap[][],int heap_counter,int this)
+  heap[this][0] += 1
+procedure constructor_Iterable(int heap[][],int heap_counter,int this)
+  heap[this][0] += 2
+procedure constructor_Collection(int heap[][],int heap_counter,int this)
+  heap[this][0] += 3
+procedure constructor_List(int heap[][],int heap_counter,int this)
+  heap[this][0] += 4
+procedure constructor_Stack(int heap[][],int heap_counter,int this,int var__size)
+  heap[this][0] += 5
+  heap[this][3] += var__size
+  heap[this][1] += 0
+  
+  heap[this][1] += heap_counter
+  heap_counter += 1 // array pseudo allocation
+procedure Stack_consume(int heap[][],int heap_counter,int this,int var_element)
+  if heap[this][2]<heap[this][3] then
+    heap[heap[this][1]][1+heap[this][2]] <=> var_element
+    heap[this][2] += 1
+  else
+    error("stack overflow")
+  fi heap[this][2]<=heap[this][3]
+procedure Stack_remove(int heap[][],int heap_counter,int this,int var_value)
+  if heap[this][2]>0 then
+    heap[this][2] -= 1
+    var_value += heap[heap[this][1]][1+heap[this][2]]
+    heap[heap[this][1]][1+heap[this][2]] -= var_value
+  else
+    error("stack underflow")
+  fi heap[this][2]>=0
+procedure Stack_addFrom(int heap[][],int heap_counter,int this,int var_position,int var_value)
+  var_value += heap[heap[this][1]][1+var_position]
+procedure Stack_size(int heap[][],int heap_counter,int this,int var_value)
+  var_value += heap[this][2]
+procedure Stack_iterator(int heap[][],int heap_counter,int this,int var_object)
+  var_object += 0
+  
+  // Abstract parameter object initialization
+  call constructor_StackIterator(heap,heap_counter,var_object,this)
+procedure constructor_StackIterator(int heap[][],int heap_counter,int this,int var__stack)
+  heap[this][0] += 6
+  local int var_m = 0
+  call dispatch_size(heap,heap_counter,var__stack,var_m)
+  heap[this][2] += var_m
+  heap[this][3] += var__stack
+  delocal int var_m = heap[this][2]
+procedure StackIterator_finalize(int heap[][],int heap_counter,int this)
+  heap[this][1] -= heap[this][2]
+procedure StackIterator_toNext(int heap[][],int heap_counter,int this,int var_value,int var_flag)
+  if heap[this][1]<heap[this][2] then
+    local int var_st = heap[this][3]
+    call dispatch_addFrom(heap,heap_counter,var_st,heap[this][1],var_value)
+    delocal int var_st = heap[this][3]
+  else
+    var_flag += 1
+  fi heap[this][1]>=0
+procedure constructor_ArrayList(int heap[][],int heap_counter,int this,int var__size)
+  heap[this][0] += 7
+  heap[this][3] += var__size
+  var_elements += 0
+  
+  var_elements += heap_counter
+  heap_counter += 1 // array pseudo allocation
+procedure ArrayList_addTo(int heap[][],int heap_counter,int this,int var_position,int var_element)
+  heap[heap[this][1]][1+var_position] += var_element
+procedure ArrayList_addFrom(int heap[][],int heap_counter,int this,int var_position,int var_value)
+  var_value += heap[heap[this][1]][1+var_position]
+procedure ArrayList_consume(int heap[][],int heap_counter,int this,int var_element)
+  if heap[this][2]<heap[this][3] then
+    var_element <=> heap[heap[this][1]][1+heap[this][2]]
+    heap[this][2] += 1
+  else
+    error("ArrayList overflow")
+  fi heap[this][2]<=heap[this][3]
+procedure ArrayList_remove(int heap[][],int heap_counter,int this,int var_value)
+  if heap[this][2]>0 then
+    heap[this][2] -= 1
+    var_value += heap[heap[this][1]][1+heap[this][2]]
+    heap[heap[this][1]][1+heap[this][2]] -= var_value
+  else
+    error("ArrayList underflow")
+  fi heap[this][2]>=0
+procedure ArrayList_size(int heap[][],int heap_counter,int this,int var_value)
+  var_value += heap[this][2]
+procedure ArrayList_iterator(int heap[][],int heap_counter,int this,int var_object)
+  var_object += 0
+  
+  // Abstract parameter object initialization
+  call constructor_ArrayListIterator(heap,heap_counter,var_object,this)
+procedure constructor_ArrayListIterator(int heap[][],int heap_counter,int this,int var__list)
+  heap[this][0] += 8
+  local int var_m = 0
+  call dispatch_size(heap,heap_counter,var__list,var_m)
+  heap[this][2] += var_m
+  heap[this][3] += var__list
+  delocal int var_m = heap[this][2]
+procedure ArrayListIterator_finalize(int heap[][],int heap_counter,int this)
+  heap[this][1] -= heap[this][2]
+procedure ArrayListIterator_toNext(int heap[][],int heap_counter,int this,int var_value,int var_flag)
+  if heap[this][1]<heap[this][2] then
+    local int var_ls = heap[this][3]
+    call dispatch_addFrom(heap,heap_counter,var_ls,heap[this][1],var_value)
+    delocal int var_ls = heap[this][3]
+  else
+    var_flag += 1
+  fi heap[this][1]>=0
+procedure constructor_Library(int heap[][],int heap_counter,int this)
+  heap[this][0] += 9
+procedure foocopy_all_elements(int x)
+  local int xxvar = x
+  x += 2
+  delocal int xxvar = x
+procedure Library_move_n_elements(int heap[][],int heap_counter,int this,int var_src,int var_dst,int var_n)
+  local int var_m = 0
+  from var_m=0 loop
+    local int var_x = 0
+    call dispatch_remove(heap,heap_counter,var_src,var_x)
+    call dispatch_add(heap,heap_counter,var_dst,var_x)
+    var_m += 1
+    delocal int var_x = 0
+  until var_m=var_n
+  delocal int var_m = var_n
+procedure main()
+  int heap[10][6]
+  int heap_counter = 1 // 0 represents a null value
+  int var_x = 0
+  int var_y = 0
+  int var_lib = 0
+  var_x += heap_counter
+  call constructor_Stack(heap,heap_counter,heap_counter,5)
+  heap_counter += 1 // object pseudo allocation
+  var_y += heap_counter
+  call constructor_ArrayList(heap,heap_counter,heap_counter,6)
+  heap_counter += 1 // object pseudo allocation
+  var_lib += heap_counter
+  call constructor_Library(heap,heap_counter,heap_counter)
+  heap_counter += 1 // object pseudo allocation
+  call dispatch_add(heap,heap_counter,var_x,1)
+  call dispatch_add(heap,heap_counter,var_x,2)
+  call dispatch_add(heap,heap_counter,var_x,4)
+  call dispatch_add(heap,heap_counter,var_x,8)
+  call dispatch_add(heap,heap_counter,var_x,16)
+  call dispatch_copy_all_elements(heap,heap_counter,var_lib,var_x,var_y,var_i)
+  uncall constructor_Stack(heap,heap_counter,var_x)
+  heap_counter -= 1
+  var_x -= heap_counter
+  uncall constructor_Library(heap,heap_counter,var_lib)
+  heap_counter -= 1
+  var_lib -= heap_counter

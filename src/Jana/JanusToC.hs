@@ -136,7 +136,9 @@ formatAssertLocalDecl :: LocalDecl -> Doc
 formatAssertLocalDecl (LocalVar Constant tp idnt Nothing p) = empty
 formatAssertLocalDecl (LocalVar _ tp idnt Nothing p)        = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) (baseVal tp)) p)
 formatAssertLocalDecl (LocalVar _ _ idnt (Just expr) p)     = formatStmt (Assert (BinOp EQ (LV (Var idnt) p) expr) p)
-formatAssertLocalDecl (LocalArray _ _ _ _ _ _)              = empty -- not implemented
+formatAssertLocalDecl (LocalArray _ itype idnt iexprs _ p)   =
+  formatIdent Value idnt <> text ".clear();" $+$
+  text "std::vector<" <> formatType (Int itype p) <> text ">().swap(" <> formatIdent Value idnt <> text ");"
 -- formatAssertLocalDecl (LocalArray intTp idnt sizes expr p) = formatType (Int it p) <+> formatIdent arrId <+> vcat (map formatIndex iexprs)
 -- $+$ formatMaybeExpr expr
 --   where formatIndex (Just e) = text "[" $+$ formatExpr e <+> text "]"
@@ -217,7 +219,8 @@ formatVdecl (Scalar vtyp typ idnt expr _) =
     formatExp (Just e) = equals <+> formatExpr e
     formatExp Nothing  = equals <+> integer 0
 formatVdecl (Array _ itype idnt size a_exp p) =
-  text "std::array<" <> formatType (Int itype p) <> comma <+> vcat (map formatSize size) <> text ">" <+> formatIdent Value idnt <+> formatExp a_exp <> semi
+  text "std::vector<" <> formatType (Int itype p) <> text ">" <+> formatIdent Value idnt <> parens (vcat (map formatSize size) <> comma <+> text "0") <> semi
+  -- text "std::array<" <> formatType (Int itype p) <> comma <+> vcat (map formatSize size) <> text ">" <+> formatIdent Value idnt <+> formatExp a_exp <> semi
   where formatSize (Just e) = formatExpr e
         formatSize Nothing  = empty
         formatExp (Just ex) = equals <+> formatExpr ex
@@ -238,11 +241,11 @@ defineProc proc =
 
 formatProc :: Proc -> Doc
 formatProc proc =
-  templ $+$
+  -- templ $+$
   (text "void" <+> formatIdent Forward (procname proc) <> parens param) `stmtWithBody`
   (formatStmts $ body proc)
   $+$
-  templ $+$
+  -- templ $+$
   (text "void" <+> formatIdent Reverse (procname proc) <> parens param) `stmtWithBody`
   (formatStmts $ invertStmts Locally $ body proc)
   where
@@ -266,7 +269,8 @@ formatParam _ (Scalar Ancilla typ idnt expr _) =
       formatExp (Just e) = equals $+$ formatExpr e
       formatExp Nothing  = empty
 formatParam num (Array _ itype idnt size a_exp p) =
-  (text "std::array<" <> formatType (Int itype p) <> comma <+> text "SIZE" <> integer num <>text ">" <+> formatIdent Reference idnt, [num])
+  (text "std::vector<" <> formatType (Int itype p) <> text ">" <+> formatIdent Reference idnt, [num])
+  -- (text "std::array<" <> formatType (Int itype p) <> comma <+> text "SIZE" <> integer num <>text ">" <+> formatIdent Reference idnt, [num])
   -- formatDeclType vtyp <+> formatType (Int itype p) <+> formatIdent (Pointer (length size)) idnt <> formatExp a_exp
     where
       formatExp (Just expr) = equals $+$ formatExpr expr
@@ -299,7 +303,7 @@ formatProgram headerfile (Program mains procs) =
   text "#include <stdio.h>      /* printf */" $+$
   text "#include <assert.h>" $+$
   text "#include <math.h>" $+$
-  text "#include <array>" $+$
+  text "#include <vector>" $+$
   text include_header $+$
   text "" $+$
   vcat (intersperse (text "") $ map defineProc procs) $+$

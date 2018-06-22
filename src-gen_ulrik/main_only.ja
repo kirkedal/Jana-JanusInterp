@@ -1,0 +1,17 @@
+// Generated program main_only
+// Memory characteristics: max object size = 11, max stack depth = 7
+procedure main()
+  int heap[7][11]
+  int heap_counter = 1 // 0 represents a null value
+  int var_x = 5
+  int var_z = 0
+  int var_y = 0
+  var_z += heap_counter
+  heap_counter += 1 // array pseudo allocation
+  var_y += heap_counter
+  heap_counter += 1 // array pseudo allocation
+  var_x += 5
+  heap[var_z][1+0] += 1
+  heap[var_z][1+1] += 2
+  heap[var_z][1+2] += 3
+  printf("x=%d\\n",var_x)

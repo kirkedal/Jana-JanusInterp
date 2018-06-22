@@ -1,0 +1,957 @@
+# 1 "twice.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 324 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "twice.c" 2
+
+//#include <stdio.h>      
+
+# 1 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/assert.h" 1 3 4
+# 40 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/assert.h" 3 4
+
+
+
+# 1 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 1 3 4
+# 27 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+# 65 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 103 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+# 131 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	#define __deprecated_msg(_msg) __attribute__((deprecated(_msg)))
+
+
+
+
+
+	#define __deprecated_enum_msg(_msg) __deprecated_msg(_msg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 227 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+# 242 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+# 259 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 289 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 373 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+# 398 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+# 430 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+# 452 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+# 462 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 486 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+# 496 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 1 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/_symbol_aliasing.h" 1 3 4
+# 26 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/_symbol_aliasing.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 534 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 2 3 4
+
+
+
+
+
+
+
+
+
+
+
+# 562 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 589 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+# 1 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/_posix_availability.h" 1 3 4
+# 26 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/_posix_availability.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 600 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/sys/cdefs.h" 2 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 43 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/assert.h" 2 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 74 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/usr/include/assert.h" 3 4
+
+
+void __assert_rtn(__const char *, __const char *, int, __const char *) __attribute__((noreturn));
+
+
+
+           
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 4 "twice.c" 2
+
+void dispatch_apply_forward(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    if (heap[this][0] == 3) {
+        Sub_apply_forward(heap, heap_counter, this, var_var, var_value);
+        (__builtin_expect(!(heap[this][0] == 3), 0) ? __assert_rtn(__func__, "twice.c", 8, #heap[this][0] == 3) : (void)0);
+    }
+    else {
+        if (heap[this][0] == 2) {
+            Add_apply_forward(heap, heap_counter, this, var_var, var_value);
+            (__builtin_expect(!(heap[this][0] == 2), 0) ? __assert_rtn(__func__, "twice.c", 13, #heap[this][0] == 2) : (void)0);
+        }
+        else {
+            if (heap[this][0] == 1) {
+                Operator_apply_forward(heap, heap_counter, this, var_var, var_value);
+                (__builtin_expect(!(heap[this][0] == 1), 0) ? __assert_rtn(__func__, "twice.c", 18, #heap[this][0] == 1) : (void)0);
+            }
+            else {
+                if (heap[this][0] == 4) {
+                    Twice_apply_forward(heap, heap_counter, this, var_var, var_value);
+                    (__builtin_expect(!(heap[this][0] == 4), 0) ? __assert_rtn(__func__, "twice.c", 23, #heap[this][0] == 4) : (void)0);
+                }
+                else {
+                    printf("Method not found");
+                    exit();
+                    (__builtin_expect(!(!(heap[this][0] == 4)), 0) ? __assert_rtn(__func__, "twice.c", 28, #!(heap[this][0] == 4)) : (void)0);
+                }
+                (__builtin_expect(!(!(heap[this][0] == 1)), 0) ? __assert_rtn(__func__, "twice.c", 30, #!(heap[this][0] == 1)) : (void)0);
+            }
+            (__builtin_expect(!(!(heap[this][0] == 2)), 0) ? __assert_rtn(__func__, "twice.c", 32, #!(heap[this][0] == 2)) : (void)0);
+        }
+        (__builtin_expect(!(!(heap[this][0] == 3)), 0) ? __assert_rtn(__func__, "twice.c", 34, #!(heap[this][0] == 3)) : (void)0);
+    }
+}
+void dispatch_apply_reverse(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    if (heap[this][0] == 3) {
+        Sub_apply_reverse(heap, heap_counter, this, var_var, var_value);
+        (__builtin_expect(!(heap[this][0] == 3), 0) ? __assert_rtn(__func__, "twice.c", 40, #heap[this][0] == 3) : (void)0);
+    }
+    else {
+        if (heap[this][0] == 2) {
+            Add_apply_reverse(heap, heap_counter, this, var_var, var_value);
+            (__builtin_expect(!(heap[this][0] == 2), 0) ? __assert_rtn(__func__, "twice.c", 45, #heap[this][0] == 2) : (void)0);
+        }
+        else {
+            if (heap[this][0] == 1) {
+                Operator_apply_reverse(heap, heap_counter, this, var_var, var_value);
+                (__builtin_expect(!(heap[this][0] == 1), 0) ? __assert_rtn(__func__, "twice.c", 50, #heap[this][0] == 1) : (void)0);
+            }
+            else {
+                if (heap[this][0] == 4) {
+                    Twice_apply_reverse(heap, heap_counter, this, var_var, var_value);
+                    (__builtin_expect(!(heap[this][0] == 4), 0) ? __assert_rtn(__func__, "twice.c", 55, #heap[this][0] == 4) : (void)0);
+                }
+                else {
+                    printf("Method not found");
+                    exit();
+                    (__builtin_expect(!(!(heap[this][0] == 4)), 0) ? __assert_rtn(__func__, "twice.c", 60, #!(heap[this][0] == 4)) : (void)0);
+                }
+                (__builtin_expect(!(!(heap[this][0] == 1)), 0) ? __assert_rtn(__func__, "twice.c", 62, #!(heap[this][0] == 1)) : (void)0);
+            }
+            (__builtin_expect(!(!(heap[this][0] == 2)), 0) ? __assert_rtn(__func__, "twice.c", 64, #!(heap[this][0] == 2)) : (void)0);
+        }
+        (__builtin_expect(!(!(heap[this][0] == 3)), 0) ? __assert_rtn(__func__, "twice.c", 66, #!(heap[this][0] == 3)) : (void)0);
+    }
+}
+
+void constructor_Operator_forward(int *heap, int &heap_counter, int &this) {
+    heap[this][0] += 1;
+}
+void constructor_Operator_reverse(int *heap, int &heap_counter, int &this) {
+    heap[this][0] -= 1;
+}
+
+void constructor_Add_forward(int *heap, int &heap_counter, int &this) {
+    heap[this][0] += 2;
+}
+void constructor_Add_reverse(int *heap, int &heap_counter, int &this) {
+    heap[this][0] -= 2;
+}
+
+void Add_apply_forward(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    var_var += var_value;
+}
+void Add_apply_reverse(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    var_var -= var_value;
+}
+
+void constructor_Sub_forward(int *heap, int &heap_counter, int &this) {
+    heap[this][0] += 3;
+}
+void constructor_Sub_reverse(int *heap, int &heap_counter, int &this) {
+    heap[this][0] -= 3;
+}
+
+void Sub_apply_forward(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    var_var -= var_value;
+}
+void Sub_apply_reverse(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    var_var += var_value;
+}
+
+void constructor_Twice_forward(int *heap, int &heap_counter, int &this, int &var_op) {
+    heap[this][0] += 4;
+    heap[this][1] += var_op;
+}
+void constructor_Twice_reverse(int *heap, int &heap_counter, int &this, int &var_op) {
+    heap[this][1] -= var_op;
+    heap[this][0] -= 4;
+}
+
+void Twice_apply_forward(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    int var_op = heap[this][1];
+    dispatch_apply_forward(heap, heap_counter, var_op, var_var, var_value);
+    dispatch_apply_forward(heap, heap_counter, var_op, var_var, var_value);
+    (__builtin_expect(!(var_op == heap[this][1]), 0) ? __assert_rtn(__func__, "twice.c", 118, #var_op == heap[this][1]) : (void)0);
+}
+void Twice_apply_reverse(int *heap, int &heap_counter, int &this, int &var_var, int &var_value) {
+    int var_op = heap[this][1];
+    dispatch_apply_reverse(heap, heap_counter, var_op, var_var, var_value);
+    dispatch_apply_reverse(heap, heap_counter, var_op, var_var, var_value);
+    (__builtin_expect(!(var_op == heap[this][1]), 0) ? __assert_rtn(__func__, "twice.c", 124, #var_op == heap[this][1]) : (void)0);
+}
+
+int main() {
+    int heap[10]
+            [2] = {0};
+    int heap_counter = 1;
+    int var_a = 0;
+    int var_b = 0;
+    int var_aa = 0;
+    int var_bb = 0;
+    int var_x = 0;
+    
+    var_a += heap_counter;
+    constructor_Add_forward(heap, heap_counter, heap_counter);
+    heap_counter += 1;
+    var_b += heap_counter;
+    constructor_Sub_forward(heap, heap_counter, heap_counter);
+    heap_counter += 1;
+    var_aa += heap_counter;
+    constructor_Twice_forward(heap, heap_counter, heap_counter, var_a);
+    heap_counter += 1;
+    var_bb += heap_counter;
+    constructor_Twice_forward(heap, heap_counter, heap_counter, var_b);
+    heap_counter += 1;
+    int _parse_tmp_0 = 4;
+    dispatch_apply_forward(heap, heap_counter, var_aa, var_x, _parse_tmp_0);
+    (__builtin_expect(!(_parse_tmp_0 == 4), 0) ? __assert_rtn(__func__, "twice.c", 151, #_parse_tmp_0 == 4) : (void)0);
+    int _parse_tmp_1 = 1;
+    dispatch_apply_reverse(heap, heap_counter, var_bb, var_x, _parse_tmp_1);
+    (__builtin_expect(!(_parse_tmp_1 == 1), 0) ? __assert_rtn(__func__, "twice.c", 154, #_parse_tmp_1 == 1) : (void)0);
+    var_x -= 10;
+    constructor_Twice_reverse(heap, heap_counter, var_bb, var_b);
+    heap_counter -= 1;
+    var_bb -= heap_counter;
+    constructor_Twice_reverse(heap, heap_counter, var_aa, var_a);
+    heap_counter -= 1;
+    var_aa -= heap_counter;
+    constructor_Sub_reverse(heap, heap_counter, var_b);
+    heap_counter -= 1;
+    var_b -= heap_counter;
+    constructor_Add_reverse(heap, heap_counter, var_a);
+    heap_counter -= 1;
+    var_a -= heap_counter;
+    return 1;
+}
+

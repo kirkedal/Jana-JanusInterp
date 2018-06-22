@@ -1,0 +1,168 @@
+
+
+
+procedure crout(int A[][], int LDU[][], int n)
+  local int j = 0
+  local int i = 0
+  local int k = 0
+
+  from j = 0 do skip
+      loop
+
+    i += j
+    from i = j do skip
+      loop
+      LDU[i][j] += A[i][j]
+
+      from k = 0 do skip
+      loop
+        if k = j
+        then
+          LDU[i][j] -= LDU[i][k]
+        else
+          LDU[i][j] -= LDU[i][k] * LDU[k][j]
+        fi k = j
+        k += 1
+      until k = j
+      k -= j
+
+      i += 1
+    until i = n
+    i -= n
+
+    i += j + 1
+    from i = j+1 do skip
+      loop
+      LDU[j][i] += A[j][i]
+
+      from k = 0 do skip
+      loop
+        if k = i
+        then
+          LDU[j][j] -= LDU[j][k]
+        else
+          LDU[j][i] -= LDU[j][k] * LDU[k][i]
+        fi k = j
+        k += 1
+      until k = j
+      k -= j
+
+      // Divide
+      local int t = LDU[j][i] / LDU[j][j]
+        LDU[j][i] -= t * LDU[j][j] - t
+      delocal int t = LDU[j][i]
+
+      i += 1
+    until i = n
+    i -= n
+
+    j += 1
+  until j = n
+  j -= n
+
+  delocal int k = 0
+  delocal int i = 0
+  delocal int j = 0
+
+procedure mult(int m1, int m2)
+  local int t = m1
+    printf("B m1 %d m2 %d t %d\n", m1, m2, t)
+    m1 += t * m2 - t
+    printf("A m1 %d m2 %d t %d\n", m1, m2, t)
+  delocal int t = m1 / m2
+
+
+procedure multLD(int LDU[][], int B[][], int n)
+  local int i = 0
+  local int j = 0
+  local int k = 0
+
+  i += n
+  from i = n
+  do
+    i -= 1
+    from j = 0 do skip
+    loop
+
+      // Mult
+      local int t = B[i][j]
+        B[i][j] += t * LDU[i][i] - t
+      delocal int t = B[i][j] / LDU[i][i]
+//        printf("B[%d][%d] *= LDU[%d][%d]", i,j,i,i)
+
+      k += i
+      from k = i
+      do skip
+      loop
+        k -= 1
+//        printf("B[%d][%d] += LDU[%d][%d] * B[%d][%d]", i,j,k,i,k,j)
+        B[i][j] += LDU[k][i] * B[k][j]
+      until k = 0
+
+      j += 1
+    until j = n
+    j -= n
+  loop skip
+  until i = 0
+
+  delocal int k = 0
+  delocal int j = 0
+  delocal int i = 0
+
+
+procedure multU(int LDU[][], int B[][], int n)
+  local int i = 0
+  local int j = 0
+  local int k = 0
+
+  from i = 0
+  do
+    from j = 0 do skip
+    loop
+
+      k += i + 1
+      from k = i + 1
+      do skip
+      loop
+//        printf("B[%d][%d] += LDU[%d][%d] * B[%d][%d]", i,j,k,i,k,j)
+        B[i][j] += LDU[k][i] * B[k][j]
+        k += 1
+      until k = n
+      k -= n
+
+      j += 1
+    until j = n
+    j -= n
+
+    i += 1
+  loop skip
+  until i = n
+  i -= n
+
+  delocal int k = 0
+  delocal int j = 0
+  delocal int i = 0
+
+procedure main()
+  int A[3][3]
+  int B[3][3]
+  int LDU[3][3]
+  int n
+  int x
+  int y
+  n += 3
+  x += 2
+  y += 4
+
+  A[0][0] ^= 2 A[1][0] ^= 4 A[2][0] ^= 2
+  A[0][1] ^= 4 A[1][1] ^= 1 A[2][1] ^= 3
+  A[0][2] ^= 4 A[1][2] ^= 1 A[2][2] ^= 4
+  B[0][0] ^= 3 B[1][0] ^= 1 B[2][0] ^= 4
+  B[0][1] ^= 2 B[1][1] ^= 2 B[2][1] ^= 3
+  B[0][2] ^= 4 B[1][2] ^= 1 B[2][2] ^= 1
+
+  call crout(A, LDU, n)
+  call multLD(LDU, B, n)
+  call multU(LDU, B, n)
+  uncall crout(A, LDU, n)
+

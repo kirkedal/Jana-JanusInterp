@@ -1,0 +1,9 @@
+procedure test_rev(int x)
+    x += 1
+
+procedure main()
+    int test_int = 4
+    int test_array[2] = {42, 17}
+
+    call test_rev(test_int) // works
+    call test_rev(test_array[0]) // doesn't work

@@ -1,0 +1,53 @@
+// Generated program boxes
+// Memory characteristics: max object size = 2, max stack depth = 10
+procedure dispatch_add_content_to(int heap[][],int heap_counter,int this,int var_x)
+  if heap[this][0]=1 then
+    call Box_add_content_to(heap,heap_counter,this,var_x)
+  else
+    local int class_id = heap[this][0]
+    printf("Error when dispatching method add_content_to to this=%d, class=%d, Box=1 ",this,class_id)
+    delocal int class_id = heap[this][0]
+    error("Method not found")
+  fi heap[this][0]=1
+procedure dispatch_add_to_content(int heap[][],int heap_counter,int this,int var_x)
+  if heap[this][0]=1 then
+    call Box_add_to_content(heap,heap_counter,this,var_x)
+  else
+    local int class_id = heap[this][0]
+    printf("Error when dispatching method add_to_content to this=%d, class=%d, Box=1 ",this,class_id)
+    delocal int class_id = heap[this][0]
+    error("Method not found")
+  fi heap[this][0]=1
+procedure constructor_Box(int heap[][],int heap_counter,int this,int var_content)
+  local int this_check = 0
+  heap[this][0] += 1
+  heap[this][1] += var_content
+  this_check += heap[this][0]
+  delocal int this_check = 1
+procedure Box_add_to_content(int heap[][],int heap_counter,int this,int var_x)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  heap[this][1] += var_x
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Box_add_content_to(int heap[][],int heap_counter,int this,int var_x)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  var_x += heap[this][1]
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure main()
+  int heap[10][2]
+  int heap_counter = 1 // 0 represents a null value
+  int var_a = 0
+  int var_b = 0
+  var_b += heap_counter
+  heap_counter += 1 // object pseudo allocation
+  call constructor_Box(heap,heap_counter,var_b,87)
+  call dispatch_add_to_content(heap,heap_counter,var_b,5)
+  uncall dispatch_add_to_content(heap,heap_counter,var_b,4)
+  call dispatch_add_content_to(heap,heap_counter,var_b,var_a)

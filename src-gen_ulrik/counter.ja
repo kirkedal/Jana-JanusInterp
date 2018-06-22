@@ -1,0 +1,40 @@
+// Generated program counter
+// Memory characteristics: max object size = 3, max stack depth = 10
+procedure dispatch_finalize(int heap[][],int heap_counter,int this,int var_uncount)
+  if heap[this][0]=1 then
+    call Counter_finalize(heap,heap_counter,this,var_uncount)
+  else
+    error("Method not found")
+  fi heap[this][0]=1
+procedure dispatch_count(int heap[][],int heap_counter,int this,int var_flag)
+  if heap[this][0]=1 then
+    call Counter_count(heap,heap_counter,this,var_flag)
+  else
+    error("Method not found")
+  fi heap[this][0]=1
+procedure constructor_Counter(int heap[][],int heap_counter,int this,int var_limit)
+  heap[this][0] += 1
+  heap[this][1] += var_limit
+procedure Counter_count(int heap[][],int heap_counter,int this,int var_flag)
+  if heap[this][2]<heap[this][1] then
+    heap[this][2] += 1
+  else
+    var_flag += 1
+  fi var_flag=0
+procedure Counter_finalize(int heap[][],int heap_counter,int this,int var_uncount)
+  heap[this][2] -= var_uncount
+procedure main()
+  int heap[10][3]
+  int heap_counter = 1 // 0 represents a null value
+  int var_c = 0
+  int var_flag = 0
+  var_c += heap_counter
+  call constructor_Counter(heap,heap_counter,heap_counter,3)
+  heap_counter += 1 // object pseudo allocation
+  call dispatch_count(heap,heap_counter,var_c,var_flag)
+  call dispatch_count(heap,heap_counter,var_c,var_flag)
+  call dispatch_finalize(heap,heap_counter,var_c,2)
+  var_flag-=0
+  uncall constructor_Counter(heap,heap_counter,var_c,3)
+  heap_counter -= 1
+  var_c -= heap_counter

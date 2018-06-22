@@ -1,0 +1,15 @@
+procedure test_xchg_in_array(u32 data)
+    local u32 x = 0xFF + data
+    data <=> x
+    delocal u32 x = data - 0xFF
+    
+procedure test_xchg_in_array2(u32 data)
+    local u32 x = 0xFF + data
+    data <=> x
+    data -= 0xFF
+    delocal u32 x = 0xFFFF0000
+
+procedure main()
+    u32 global_data[2] = {0xFFFF0000, 0}
+    call test_xchg_in_array(global_data[0]) // <-- comment out this one
+    call test_xchg_in_array2(global_data[0])

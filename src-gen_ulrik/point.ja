@@ -1,0 +1,70 @@
+// Generated program point
+// Memory characteristics: max object size = 3, max stack depth = 10
+procedure dispatch_add_to_y(int heap[][],int heap_counter,int this,int var_y)
+  if heap[this][0]=1 then
+    call Point_add_to_y(heap,heap_counter,this,var_y)
+  else
+    error("Method not found")
+  fi heap[this][0]=1
+procedure dispatch_example1(int heap[][],int heap_counter,int this)
+  if heap[this][0]=2 then
+    call Main_example1(heap,heap_counter,this)
+  else
+    error("Method not found")
+  fi heap[this][0]=2
+procedure dispatch_add_to_x(int heap[][],int heap_counter,int this,int var_x)
+  if heap[this][0]=1 then
+    call Point_add_to_x(heap,heap_counter,this,var_x)
+  else
+    error("Method not found")
+  fi heap[this][0]=1
+procedure dispatch_example2(int heap[][],int heap_counter,int this)
+  if heap[this][0]=2 then
+    call Main_example2(heap,heap_counter,this)
+  else
+    error("Method not found")
+  fi heap[this][0]=2
+procedure constructor_Point(int heap[][],int heap_counter,int this,int var_x,int var_y)
+  heap[this][0] += 1
+  heap[this][1] += var_x
+  heap[this][2] += var_y
+procedure Point_add_to_x(int heap[][],int heap_counter,int this,int var_x)
+  heap[this][1] += var_x
+procedure Point_add_to_y(int heap[][],int heap_counter,int this,int var_y)
+  heap[this][2] += var_y
+procedure constructor_Main(int heap[][],int heap_counter,int this)
+  heap[this][0] += 2
+procedure Main_example1(int heap[][],int heap_counter,int this)
+  local int var_p = 0
+  var_p += heap_counter
+  call constructor_Point(heap,heap_counter,heap_counter,5,8)
+  heap_counter += 1 // object pseudo allocation
+  call dispatch_add_to_x(heap,heap_counter,var_p,2)
+  uncall dispatch_add_to_y(heap,heap_counter,var_p,3)
+  uncall constructor_Point(heap,heap_counter,var_p,7,5)
+  heap_counter -= 1
+  delocal int var_p = heap_counter
+procedure Main_example2(int heap[][],int heap_counter,int this)
+  local int var_p = 0
+  local int var_q = 0
+  var_p += heap_counter
+  call constructor_Point(heap,heap_counter,heap_counter,1,7)
+  heap_counter += 1 // object pseudo allocation
+  var_q += var_p
+  call dispatch_add_to_x(heap,heap_counter,var_q,2)
+  delocal int var_q = var_p
+  uncall constructor_Point(heap,heap_counter,var_p,3,7)
+  heap_counter -= 1
+  delocal int var_p = heap_counter
+procedure main()
+  int heap[10][3]
+  int heap_counter = 1 // 0 represents a null value
+  int var_m = 0
+  var_m += heap_counter
+  call constructor_Main(heap,heap_counter,heap_counter)
+  heap_counter += 1 // object pseudo allocation
+  call dispatch_example1(heap,heap_counter,var_m)
+  call dispatch_example2(heap,heap_counter,var_m)
+  uncall constructor_Main(heap,heap_counter,var_m)
+  heap_counter -= 1
+  var_m -= heap_counter

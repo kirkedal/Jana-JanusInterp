@@ -1,0 +1,73 @@
+// Generated program twice
+// Memory characteristics: max object size = 2, max stack depth = 10
+procedure dispatch_apply(int heap[][],int heap_counter,int this,int var_var,int var_value)
+  if heap[this][0]=3 then
+    call Sub_apply(heap,heap_counter,this,var_var,var_value)
+  else
+    if heap[this][0]=2 then
+      call Add_apply(heap,heap_counter,this,var_var,var_value)
+    else
+      if heap[this][0]=1 then
+        call Operator_apply(heap,heap_counter,this,var_var,var_value)
+      else
+        if heap[this][0]=4 then
+          call Twice_apply(heap,heap_counter,this,var_var,var_value)
+        else
+          error("Method not found")
+        fi heap[this][0]=4
+      fi heap[this][0]=1
+    fi heap[this][0]=2
+  fi heap[this][0]=3
+procedure constructor_Operator(int heap[][],int heap_counter,int this)
+  heap[this][0] += 1
+procedure constructor_Add(int heap[][],int heap_counter,int this)
+  heap[this][0] += 2
+procedure Add_apply(int heap[][],int heap_counter,int this,int var_var,int var_value)
+  var_var += var_value
+procedure constructor_Sub(int heap[][],int heap_counter,int this)
+  heap[this][0] += 3
+procedure Sub_apply(int heap[][],int heap_counter,int this,int var_var,int var_value)
+  var_var -= var_value
+procedure constructor_Twice(int heap[][],int heap_counter,int this,int var_op)
+  heap[this][0] += 4
+  heap[this][1] += var_op
+procedure Twice_apply(int heap[][],int heap_counter,int this,int var_var,int var_value)
+  local int var_op = heap[this][1]
+  call dispatch_apply(heap,heap_counter,var_op,var_var,var_value)
+  call dispatch_apply(heap,heap_counter,var_op,var_var,var_value)
+  delocal int var_op = heap[this][1]
+procedure main()
+  int heap[10][2]
+  int heap_counter = 1 // 0 represents a null value
+  int var_a = 0
+  int var_b = 0
+  int var_aa = 0
+  int var_bb = 0
+  int var_x = 0
+  var_a += heap_counter
+  call constructor_Add(heap,heap_counter,heap_counter)
+  heap_counter += 1 // object pseudo allocation
+  var_b += heap_counter
+  call constructor_Sub(heap,heap_counter,heap_counter)
+  heap_counter += 1 // object pseudo allocation
+  var_aa += heap_counter
+  call constructor_Twice(heap,heap_counter,heap_counter,var_a)
+  heap_counter += 1 // object pseudo allocation
+  var_bb += heap_counter
+  call constructor_Twice(heap,heap_counter,heap_counter,var_b)
+  heap_counter += 1 // object pseudo allocation
+  call dispatch_apply(heap,heap_counter,var_aa,var_x,4)
+  uncall dispatch_apply(heap,heap_counter,var_bb,var_x,1)
+  var_x-=10
+  uncall constructor_Twice(heap,heap_counter,var_bb,var_b)
+  heap_counter -= 1
+  var_bb -= heap_counter
+  uncall constructor_Twice(heap,heap_counter,var_aa,var_a)
+  heap_counter -= 1
+  var_aa -= heap_counter
+  uncall constructor_Sub(heap,heap_counter,var_b)
+  heap_counter -= 1
+  var_b -= heap_counter
+  uncall constructor_Add(heap,heap_counter,var_a)
+  heap_counter -= 1
+  var_a -= heap_counter

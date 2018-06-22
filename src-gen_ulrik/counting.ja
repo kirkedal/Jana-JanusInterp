@@ -1,0 +1,79 @@
+// Generated program counting
+// Memory characteristics: max object size = 3, max stack depth = 10
+procedure dispatch_finalize(int heap[][],int heap_counter,int this,int var_uncount)
+  if heap[this][0]=1 then
+    call Counter_finalize(heap,heap_counter,this,var_uncount)
+  else
+    local int class_id = heap[this][0]
+    printf("Error when dispatching method finalize to this=%d, class=%d, Counter=1 ",this,class_id)
+    delocal int class_id = heap[this][0]
+    error("Method not found")
+  fi heap[this][0]=1
+procedure dispatch_count(int heap[][],int heap_counter,int this,int var_flag)
+  if heap[this][0]=1 then
+    call Counter_count(heap,heap_counter,this,var_flag)
+  else
+    local int class_id = heap[this][0]
+    printf("Error when dispatching method count to this=%d, class=%d, Counter=1 ",this,class_id)
+    delocal int class_id = heap[this][0]
+    error("Method not found")
+  fi heap[this][0]=1
+procedure constructor_Counter(int heap[][],int heap_counter,int this,int var_limit)
+  local int this_check = 0
+  heap[this][0] += 1
+  heap[this][1] += var_limit
+  this_check += heap[this][0]
+  delocal int this_check = 1
+procedure Counter_count(int heap[][],int heap_counter,int this,int var_flag)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  if heap[this][2]<heap[this][1] then
+    heap[this][2] += 1
+  else
+    var_flag += 1
+  fi var_flag=0
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure Counter_finalize(int heap[][],int heap_counter,int this,int var_uncount)
+  local int heap_counter_check = heap_counter
+  local int this_check = this
+  local int this_class_check = heap[this][0]
+  heap[this][2] -= var_uncount
+  delocal int this_class_check = heap[this][0]
+  delocal int this_check = this
+  delocal int heap_counter_check = heap_counter
+procedure main()
+  int heap[10][3]
+  int heap_counter = 1 // 0 represents a null value
+  int var_c1 = 0
+  int var_c2 = 0
+  int var_flag
+  var_c1 += heap_counter
+  heap_counter += 1 // object pseudo allocation
+  call constructor_Counter(heap,heap_counter,var_c1,3)
+  var_c2 += heap_counter
+  heap_counter += 1 // object pseudo allocation
+  call constructor_Counter(heap,heap_counter,var_c2,3)
+  call dispatch_count(heap,heap_counter,var_c1,var_flag)
+  call dispatch_count(heap,heap_counter,var_c2,var_flag)
+  call dispatch_count(heap,heap_counter,var_c1,var_flag)
+  call dispatch_count(heap,heap_counter,var_c2,var_flag)
+  call dispatch_count(heap,heap_counter,var_c1,var_flag)
+  call dispatch_count(heap,heap_counter,var_c1,var_flag)
+  call dispatch_count(heap,heap_counter,var_c1,var_flag)
+  call dispatch_finalize(heap,heap_counter,var_c1,3)
+  call dispatch_finalize(heap,heap_counter,var_c2,2)
+  uncall constructor_Counter(heap,heap_counter,var_c2,3)
+  heap_counter -= 1
+  var_c2 -= heap_counter
+  if var_c2 != 0 then
+    error("Reference not zeroed after object deallocation")
+  fi var_c2 != 0
+  uncall constructor_Counter(heap,heap_counter,var_c1,3)
+  heap_counter -= 1
+  var_c1 -= heap_counter
+  if var_c1 != 0 then
+    error("Reference not zeroed after object deallocation")
+  fi var_c1 != 0
