@@ -1,4 +1,4 @@
 FILES=src/Main.hs src/Jana/*.hs
 
 all:
-	(cd src; make opt)
+	(cd src; make opt GHC="$(GHC)")

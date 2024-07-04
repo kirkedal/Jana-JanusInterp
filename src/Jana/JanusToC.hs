@@ -1,7 +1,7 @@
 
 module Jana.JanusToC where
 
-import Prelude hiding (GT, LT, EQ)
+import Prelude hiding (GT, LT, EQ, (<>))
 import Data.List (intersperse)
 import Text.PrettyPrint
 import qualified Data.Map as Map
@@ -346,9 +346,3 @@ instance ShowC ProcMain where
 
 instance ShowC Program where
   showC = render . formatProgram Nothing
-
-
-
-
-
-

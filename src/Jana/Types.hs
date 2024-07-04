@@ -22,16 +22,17 @@ module Jana.Types (
 
 import Control.Applicative
 import Prelude hiding (GT, LT, EQ)
-import Data.Bits
+import Data.Bits hiding (Xor, And)
 import Data.List (intercalate, genericSplitAt)
 import Data.IORef
 import qualified Data.Set as Set
+import Control.Monad -- (when, foldM, liftM)
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 import Text.Printf (printf)
 import qualified Data.Map as Map
-import Math.NumberTheory.GCD (extendedGCD)
+-- import Math.NumberTheory.GCD (extendedGCD)
 import Data.Int
 import Data.Word
 
@@ -257,13 +258,13 @@ performOperation :: BinOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Va
 --performOperation modOp v1 v2 _ _ | trace ("binOp " ++ show v1 ++ " " ++ show modOp ++ " " ++ show v2) False = undefined
 performOperation Div (JInt _) (JInt ival) _ pos | truthyInt ival =
   pos <!!> divisionByZero
-performOperation Div (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ =
-  do flag <- asks (modInt . evalOptions)
-     case flag of
-       (ModPrime n) -> return $ opFunc Mul (JUnbound) i1 (multInv i2 n)
-       _ -> return $ opFunc Div (JUnbound) i1 i2
-  where
-    multInv a p = (\(_,i,_) -> i) $ extendedGCD a (toInteger p)
+-- performOperation Div (JInt (JUnbound i1)) (JInt (JUnbound i2)) _ _ =
+--   do flag <- asks (modInt . evalOptions)
+--      case flag of
+--        (ModPrime n) -> return $ opFunc Mul (JUnbound) i1 (multInv i2 n)
+--        _ -> return $ opFunc Div (JUnbound) i1 i2
+--   where
+--     multInv a p = (\(_,i,_) -> i) $ extendedGCD a (toInteger p)
 performOperation SL (JInt ival)           (JInt shiftval)       _  _  =
   return $ opFunc SL (intValueToValueType ival) (unpackIntValue ival) (unpackIntValue shiftval)
 performOperation SR (JInt ival)           (JInt shiftval)       _  _  =

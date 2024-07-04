@@ -444,7 +444,16 @@ assertStmt :: Parser Stmt
 assertStmt = reserved "assert" >> liftM2 Assert expression getPosition
 
 expression :: Parser Expr
-expression = buildExpressionParser binOperators term
+expression = do
+  expr <- buildExpressionParser binOperators term
+  ternary expr <|> return expr
+  where
+    ternary e0 = do
+      reservedOp "?"
+      e1 <- expression
+      reservedOp ":"
+      e2 <- expression
+      return $ Ternary e0 e1 e2
 
 addPos :: Parser (SourcePos -> a) -> Parser a
 addPos parser = do pos <- getPosition

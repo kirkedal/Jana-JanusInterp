@@ -756,6 +756,11 @@ evalExpr itype _ (Size idnt@(Ident _ pos) _) = inArgument "size" (ident idnt) $
        val       -> pos <!!> typeMismatch ["array", "stack"] (showValueType val)
 evalExpr _ _ (UnaryOp FromLoop _) = error "Undefined evaluation of expression"
 evalExpr _ _ (ArrayE _ _) = error "Undefined evaluation of expression"
+evalExpr itype lv expr@(Ternary e1 e2 e3) = inExpression expr $
+  do val1 <- unpackBool (getExprPos e1) =<< evalModularExpr InferInt e1
+     if val1
+       then evalModularAliasExpr itype lv e2
+       else evalModularAliasExpr itype lv e3
 
 -- |This alias check differs to the alias check in the evalExpr in that it also includes size.
 -- |This is used in delocal where the delocaliser array is not allowed.

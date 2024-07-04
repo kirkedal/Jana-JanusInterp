@@ -11,3 +11,5 @@ cabal.sandbox.config
 cabal.config
 .stack-work
 stack.yaml
+dist-newstyle
+stack.yaml.lock

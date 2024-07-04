@@ -135,6 +135,7 @@ data Expr
     | Size     Ident SourcePos
     | Nil      SourcePos
     | ArrayE   [Expr] SourcePos
+    | Ternary  Expr Expr Expr
     deriving (Eq)
 
 -- Declaration
