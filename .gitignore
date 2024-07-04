@@ -13,3 +13,4 @@ cabal.config
 stack.yaml
 dist-newstyle
 stack.yaml.lock
+bin/janus
