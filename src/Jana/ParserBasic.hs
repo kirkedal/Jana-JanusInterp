@@ -172,8 +172,8 @@ statement idents =   assignStmt
           <|> fromStmt   idents
           <|> callStmt   idents
           <|> uncallStmt idents
-          <|> swapStmt   
-          <|> skipStmt   
+          <|> swapStmt
+          <|> skipStmt
           <?> "statement"
 
 assignStmt :: Parser Stmt
@@ -190,6 +190,10 @@ modOp :: Parser ModOp
 modOp =   (reservedOp "+=" >> return AddEq)
       <|> (reservedOp "-=" >> return SubEq)
       <|> (reservedOp "^=" >> return XorEq)
+      <|> (reservedOp "*=" >> return MulEq)
+      <|> (reservedOp "/=" >> return DivEq)
+      <|> (reservedOp "**=" >> return ExpEq)
+      <|> (reservedOp "//=" >> return RtEq)
 
 ifStmt :: [Ident] -> Parser Stmt
 ifStmt idents =
@@ -336,6 +340,8 @@ binOperators = [ [ notChain
                , [ binop  "*"   Mul
                  , binop  "/"   Div
                  , binop  "%"   Mod
+                 , binop  "**"  Exp
+                 , binop  "*/"  Rt
                  ]
                , [ binop  "+"   Add
                  , binop  "-"   Sub

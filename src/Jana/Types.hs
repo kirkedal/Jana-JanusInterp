@@ -239,6 +239,10 @@ opFunc Add f = wrap (JInt . f) (+)
 opFunc Sub f = wrap (JInt . f) (-)
 opFunc Mul f = wrap (JInt . f) (*)
 opFunc Exp f = wrap (JInt . f) (^)
+opFunc Rt  f = wrap (JInt . f) op
+  where op x n | nthRoot n x ^ n == x = nthRoot n x
+               | otherwise = error "Rt failed in Types.hs"
+        nthRoot n x = round ((fromIntegral x :: Double) ** (1 / fromIntegral n))
 opFunc Div f = wrap (JInt . f) div
 opFunc Mod f = wrap (JInt . f) mod
 opFunc And f = wrap (JInt . f) (.&.)
@@ -288,10 +292,30 @@ performOperation _ val1 val2 _ pos =
 
 performModOperation :: ModOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
 -- performModOperation modOp v1 v2 _ _ | trace ("modOp " ++ show v1 ++ " " ++ show modOp ++ " " ++ show v2) False = undefined
-performModOperation modOp a b c d = performOperation (modOpToBinOp modOp) a b c d
+performModOperation modOp a b c d = performOperation' (modOpToBinOp modOp) a b c d
   where modOpToBinOp AddEq = Add
         modOpToBinOp SubEq = Sub
         modOpToBinOp XorEq = Xor
+        modOpToBinOp MulEq = Mul
+        modOpToBinOp DivEq = Div
+        modOpToBinOp ExpEq = Exp
+        modOpToBinOp RtEq  = Rt
+        performOperation' Div _ b _ p | isZero b = throwJanaError p (typeError "Division by 0.")
+        performOperation' Mul _ b _ p | isZero b = throwJanaError p (typeError "Multiplixation by 0.")
+        performOperation' op  a b c d = performOperation op  a b c d
+        isZero (JInt ival) = case ival of
+          JUnbound 0 -> True
+          JI8 0 -> True
+          JI16 0 -> True
+          JI32 0 -> True
+          JI64 0 -> True
+          JU8 0 -> True
+          JU16 0 -> True
+          JU32 0 -> True
+          JU64 0 -> True
+          JInferInt 0 -> True
+          _ -> False
+
 
 --------------------------------------------------------------
 -- Environment

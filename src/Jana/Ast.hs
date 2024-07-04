@@ -64,6 +64,10 @@ data ModOp
     = AddEq -- +=
     | SubEq -- -=
     | XorEq -- ^=
+    | MulEq -- *=
+    | DivEq -- /=
+    | ExpEq -- **=
+    | RtEq  -- */=, √
     deriving (Eq, Show)
 
 -- Unary operators
@@ -75,14 +79,14 @@ data UnaryOp
 
 -- Binary operators
 data BinOp
-    = Add | Sub | Mul | Div | Mod | Exp  -- Arithmetic (+ - * / % **)
+    = Add | Sub | Mul | Div | Mod | Exp | Rt -- Arithmetic (+ - * / % ** */)
     | And | Or | Xor                     -- Binary (& | ^)
     | SL | SR                            -- Shift (<< | >>)
     | LAnd | LOr                         -- Logical (&& ||)
     | GT | LT | EQ | NEQ | GE | LE       -- Relational (> < = != >= <=)
     deriving (Eq, Ord, Show)
 
-data DebugType 
+data DebugType
     = Normal
     | Beginning
     | End

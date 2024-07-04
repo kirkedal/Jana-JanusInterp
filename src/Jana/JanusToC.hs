@@ -62,6 +62,10 @@ formatModOp :: ModOp -> Doc
 formatModOp AddEq = text "+="
 formatModOp SubEq = text "-="
 formatModOp XorEq = text "^="
+formatModOp MulEq = text "*="
+formatModOp DivEq = text "/="
+formatModOp ExpEq = error "**=: Not supported in C++ translation"
+formatModOp RtEq  = error "*/=: Not supported in C++ translation"
 
 -- Operators and their precedence
 unaryOpMap :: Map.Map UnaryOp ([Char], Integer)
@@ -74,7 +78,7 @@ binOpMap = Map.fromList [
   , (Div , ("/",  5))
   , (Mod , ("%",  5))
   , (Exp , ("**", 5))
-  
+
   , (Add , ("+",  4))
   , (Sub , ("-",  4))
 

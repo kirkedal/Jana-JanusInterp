@@ -25,6 +25,9 @@ invertStmt _ (Assign modOp lval expr pos) =
   where invertModOp AddEq = SubEq
         invertModOp SubEq = AddEq
         invertModOp XorEq = XorEq
+        invertModOp MulEq = DivEq
+        invertModOp ExpEq = RtEq
+        invertModOp RtEq  = ExpEq
 invertStmt mode (If e1 ifPart elsePart e2 pos) =
   If e2 (invertStmts mode ifPart) (invertStmts mode elsePart) e1 pos
 invertStmt mode (From e1 doPart loopPart e2 pos) =

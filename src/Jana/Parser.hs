@@ -209,6 +209,10 @@ modOp :: Parser ModOp
 modOp =   (reservedOp "+=" >> return AddEq)
       <|> (reservedOp "-=" >> return SubEq)
       <|> (reservedOp "^=" >> return XorEq)
+      <|> (reservedOp "*=" >> return MulEq)
+      <|> (reservedOp "/=" >> return DivEq)
+      <|> (reservedOp "**=" >> return ExpEq)
+      <|> (reservedOp "*/=" >> return RtEq)
 
 ifStmt :: Parser Stmt
 ifStmt =
@@ -518,6 +522,7 @@ binOperators = [ [ notChain
                  , cast
                  ]
                , [ binop  "**"  Exp
+                 , binop  "*/"  Rt
                  ]
                , [ binop' "*"   Mul '*'
                  , binop  "/"   Div

@@ -41,6 +41,10 @@ formatModOp :: ModOp -> Doc
 formatModOp AddEq = text "+="
 formatModOp SubEq = text "-="
 formatModOp XorEq = text "^="
+formatModOp MulEq = text "*="
+formatModOp DivEq = text "/="
+formatModOp ExpEq = text "**="
+formatModOp RtEq  = text "*/="
 
 -- Operators and their precedence
 -- Should match the operator table in Jana.Parser
@@ -56,6 +60,7 @@ binOpMap = Map.fromList [
   , (Div , ("/",  4))
   , (Mod , ("%",  4))
   , (Exp , ("**", 4))
+  , (Rt  , ("*/", 4))
   , (SL  , ("<<", 4))
   , (SR  , (">>", 4))
 
