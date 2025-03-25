@@ -48,6 +48,7 @@ janaDef = Token.LanguageDef {
               , Token.opLetter         = oneOf ""
               , Token.reservedOpNames  = []
               , Token.reservedNames    = [ "procedure"
+                                         , "function"
                                          , "int"
                                          , "i8", "i16", "i32", "i64"
                                          , "u8", "u16", "u32", "u64"
@@ -121,8 +122,8 @@ program =
      (mains, procs) <- liftM partitionEithers (many genProcedure)
      eof
      case mains of
-       []  -> return $ Program Nothing procs
-       [m] -> return $ Program (Just m) procs
+       []  -> return $ Program Nothing Nothing procs
+       [m] -> return $ Program Nothing (Just m) procs
        _   -> error "More than one mail procedure defined"
 
 genProcedure :: Parser (Either ProcMain Proc)

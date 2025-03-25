@@ -259,7 +259,7 @@ formatProc proc =
     nest 4 (formatStmts $ body proc)
 
 formatProgram :: Program -> Doc
-formatProgram (Program main procs) =
+formatProgram (Program Nothing main procs) =
   vcat (intersperse (text "") $ map formatProc procs) $+$
   text "" $+$
   maybe empty formatMain main

@@ -7,8 +7,8 @@ import Jana.Ast
 data InvertMode = Globally | Locally
 
 invertProgram :: Program -> Program
-invertProgram (Program mains procs) =
-  Program mains (map invertProcGlobally procs)
+invertProgram (Program Nothing mains procs) =
+  Program Nothing mains (map invertProcGlobally procs)
 
 invertProc :: Proc -> Proc
 invertProc proc = proc { body = invertStmts Locally $ body proc }

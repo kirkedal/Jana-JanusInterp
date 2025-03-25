@@ -173,7 +173,15 @@ data Proc
            }
     deriving (Eq)
 
-data Program = Program (Maybe ProcMain) [Proc]
+-- Function definition
+data Func
+    = Func { funcname  :: Ident
+           , fparams   :: [Vdecl]   -- Zero or more
+           , fbody     :: [Stmt]
+           }
+    deriving (Eq)
+
+data Program = Program (Maybe [Func]) (Maybe ProcMain) [Proc]
 
 
 class Identifiable a where

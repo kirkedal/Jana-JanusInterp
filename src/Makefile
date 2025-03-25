@@ -1,5 +1,5 @@
 FILES=Main.hs Jana/*.hs
-GHC:=ghc
+GHC?=ghc
 
 all: main
 

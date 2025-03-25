@@ -302,7 +302,7 @@ formatParams vdecls =
 
 -- Program
 formatProgram :: Maybe [Char] -> Program -> Doc
-formatProgram headerfile (Program mains procs) =
+formatProgram headerfile (Program Nothing mains procs) =
   text "/* Translated from Janus program */" $+$
   text "#include <stdio.h>      /* printf */" $+$
   text "#include <assert.h>" $+$

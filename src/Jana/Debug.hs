@@ -3,8 +3,8 @@ module Jana.Debug where
 import Jana.Ast
 
 injectDBProgram :: Program -> Program
-injectDBProgram (Program mains procs) =
-  Program (fmap injectDBProcMain mains) (map injectDBProc procs)
+injectDBProgram (Program Nothing mains procs) =
+  Program Nothing (fmap injectDBProcMain mains) (map injectDBProc procs)
 
 
 injectDBProcMain :: ProcMain -> ProcMain

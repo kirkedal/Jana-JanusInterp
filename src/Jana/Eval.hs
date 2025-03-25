@@ -29,7 +29,7 @@ import Jana.ErrorMessages
 import Jana.Printf
 import Jana.Debug
 
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 inArgument :: String -> String -> Eval a -> Eval a
 inArgument funid argid monad = catchError monad $
@@ -154,18 +154,18 @@ getExprPos (Nil pos)       = pos
 getExprPos (ArrayE _ pos)  = pos
 
 runProgram :: String -> Program -> EvalOptions -> IO ()
-runProgram _ p@(Program (Just _) _) evalOpts =
+runProgram _ p@(Program Nothing (Just _) _) evalOpts =
   runProgramAfterDBcheck checkDB evalOpts
   where
     checkDB =
       if (runDebugger evalOpts) == DebugOff
         then p
         else injectDBProgram p
-runProgram filename (Program Nothing _) _ =
+runProgram filename (Program Nothing Nothing _) _ =
   print (newFileError filename noMainProc) >> exitWith (ExitFailure 1)
 
 runProgramAfterDBcheck :: Program -> EvalOptions -> IO ()
-runProgramAfterDBcheck (Program (Just main) procs) evalOpts =
+runProgramAfterDBcheck (Program Nothing (Just main) procs) evalOpts =
   case procEnvFromList procs of
     Left err -> print err >> exitWith (ExitFailure 1)
     Right pEnv ->
@@ -566,6 +566,18 @@ createLocalBinding (LocalVar dtype typ@(Int itype _) idnt expr _) =
   do val <- evalModularExpr itype (fromMaybeExpr typ expr)
      checkType typ val
      bindVar dtype idnt val
+createLocalBinding (LocalVar dtype typ@(Stack _) idnt expr _) =
+  do val <- evalModularExpr Unbound (fromMaybeExpr typ expr)
+     checkType typ val
+     bindVar dtype idnt val
+-- createLocalBinding (LocalVar dtype typ@(Stack _) idnt Nothing _) =
+--   do let val = JStack []
+--      checkType typ val
+--      bindVar dtype idnt val
+-- createLocalBinding (LocalVar dtype typ@(Stack _) idnt (Just (Nil _)) _) =
+--   do let val = JStack []
+--      checkType typ val
+--      bindVar dtype idnt val
 createLocalBinding (LocalArray dtype itype idnt size expr pos) =
   do sizeInt <- evalSize pos size $ Just $ sizeEstimate (fromMaybeArrayExpr pos expr)
      exprs <- flattenArray pos sizeInt (fromMaybeArrayExpr pos expr)
@@ -594,7 +606,13 @@ assertLocalBinding (LocalArray _ itype idnt size expr pos) =
      unless (valsC == vals') $
        pos <!!> wrongDelocalValue idnt (show valsC) (show vals')
      unbindVar idnt
-assertLocalBinding _ = undefined "No asserted bindings on stacks and arrays"
+assertLocalBinding (LocalVar _ (Stack _) idnt expr pos) =
+  do val <- evalModularAliasExpr Unbound (Just $ Var idnt) (fromMaybeExpr (Stack pos) expr)
+     val' <- getVar idnt
+     unless (val == val') $
+       pos <!!> wrongDelocalValue idnt (show val) (show val')
+     unbindVar idnt
+assertLocalBinding x = undefined "No asserted bindings on stacks and arrays"
 
 fromMaybeExpr :: Type -> Maybe Expr -> Expr
 fromMaybeExpr typ Nothing   = baseVal typ
