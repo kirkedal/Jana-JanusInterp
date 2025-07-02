@@ -36,7 +36,7 @@ executable jana
                      containers >= 0.4.2.1,
                      mtl >= 2.1.2,
                      pretty == 1.*,
-                     arithmoi >= 0.4.3.0,
+                     arithmoi >= 0.13,
                      monad-coroutine >= 0.9.0.3
   if flag(static)
     ghc-options:     -static -optc-static -optl-static -optl-pthread

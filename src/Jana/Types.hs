@@ -22,16 +22,17 @@ module Jana.Types (
 
 import Control.Applicative
 import Prelude hiding (GT, LT, EQ)
-import Data.Bits
+import Data.Bits hiding (Xor, And)
 import Data.List (intercalate, genericSplitAt)
 import Data.IORef
+import Control.Monad (when, unless, liftM, foldM)
 import qualified Data.Set as Set
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 import Text.Printf (printf)
 import qualified Data.Map as Map
-import Math.NumberTheory.GCD (extendedGCD)
+-- import Math.NumberTheory.GCD (extendedGCD) -- deleted from arithmoi 0.13
 import Data.Int
 import Data.Word
 
@@ -284,6 +285,12 @@ performOperation op (JInt ival)           (JInt (JInferInt i2)) p1 p2 =
   performOperation op (JInt ival) (JInt (intTypeToValueType (intValueToIntType ival) i2)) p1 p2
 performOperation _ val1 val2 _ pos =
   pos <!!> typeMismatch [showValueType val1] (showValueType val2)
+
+extendedGCD :: Integer -> Integer -> (Integer, Integer, Integer)
+extendedGCD 0 b = (b, 0, 1)
+extendedGCD a b =
+  let (g, s, t) = extendedGCD (b `mod` a) a
+  in (g, t - (b `div` a) * s, s)
 
 performModOperation :: ModOp -> Value -> Value -> SourcePos -> SourcePos -> Eval Value
 -- performModOperation modOp v1 v2 _ _ | trace ("modOp " ++ show v1 ++ " " ++ show modOp ++ " " ++ show v2) False = undefined
