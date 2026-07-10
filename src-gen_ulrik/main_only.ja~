@@ -1,0 +1,9 @@
+// Generated program main_only
+// Memory characteristics: max object size = 0, max stack depth = 7
+procedure main()
+  int heap[7][0]
+  int heap_counter = 0
+  int _x = 5
+  _x += 5
+  show "x"
+  show x
