@@ -5,7 +5,7 @@ description:         Interpreter for the reversible language Janus.
 license:             BSD3
 license-file:        LICENSE
 author:              Michael Budde, Claus Skou Nielsen, Michael Kirkedal Thomsen
-maintainer:          kirkedal@acm.org
+maintainer:          m.kirkedal@di.ku.dk
 -- copyright:
 category:            Language
 build-type:          Simple
